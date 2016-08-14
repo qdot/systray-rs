@@ -4,11 +4,13 @@ version = "0.1.0"
 authors = ["Kyle Machulis <kyle@nonpolynomial.com>"]
 
 [target.'cfg(windows)'.dependencies]
-winapi-rs="*"
+winapi="*"
 user32-sys="*"
+kernel32-sys="*"
+libc="*"
 
 [target.'cfg(darwin)'.dependencies]
-cocoa-rs="*"
+cocoa="*"
 
 [target.'cfg(linux)'.dependencies]
 gdk="*"
