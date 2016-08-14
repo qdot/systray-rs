@@ -1,0 +1,14 @@
+[package]
+name = "systray"
+version = "0.1.0"
+authors = ["Kyle Machulis <kyle@nonpolynomial.com>"]
+
+[target.'cfg(windows)'.dependencies]
+winapi-rs="*"
+user32-sys="*"
+
+[target.'cfg(darwin)'.dependencies]
+cocoa-rs="*"
+
+[target.'cfg(linux)'.dependencies]
+gdk="*"
