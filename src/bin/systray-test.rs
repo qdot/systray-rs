@@ -4,7 +4,7 @@ extern crate user32;
 extern crate shell32;
 extern crate libc;
 
-use winapi::windef::{HWND, HMENU, HICON, HBRUSH};
+use winapi::windef::{HWND, HMENU, HICON, HBRUSH, HBITMAP};
 use winapi::winnt::{LPCWSTR};
 use winapi::minwindef::{UINT, DWORD, WPARAM, LPARAM, LRESULT, HINSTANCE};
 use winapi::winuser::{WNDCLASSW, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT};
@@ -15,6 +15,12 @@ fn to_wstring(str : &str) -> Vec<u16> {
     OsStr::new(str).encode_wide().chain(Some(0).into_iter()).collect()
 }
 
+static mut hwnd : HWND = 0 as HWND;
+static mut hmenu: HMENU = 0 as HMENU;
+
+struct WinApp {
+}
+
 pub unsafe extern "system" fn window_proc(h_wnd :HWND,
 	                                        msg :UINT,
                                           w_param :WPARAM,
@@ -22,9 +28,22 @@ pub unsafe extern "system" fn window_proc(h_wnd :HWND,
 {
     if msg == winapi::winuser::WM_USER + 1 {
         println!("Got callback message! {}", l_param);
-        if l_param as UINT == winapi::winuser::WM_LBUTTONUP {
-            println!("Posting quit message! {}", l_param);
-            user32::PostQuitMessage(0);
+        // if l_param as UINT == winapi::winuser::WM_LBUTTONUP {
+        //     println!("Posting quit message! {}", l_param);
+        //     user32::PostQuitMessage(0);
+        // }
+        if l_param as UINT == winapi::winuser::WM_LBUTTONUP  {
+            let mut p = winapi::POINT {
+                x: 0,
+                y: 0
+            };
+            if user32::GetCursorPos(&mut p as *mut winapi::POINT) == 0 {
+                println!("Wrong position!");
+                return 1;
+            }
+            println!("showing menu!");
+            user32::SetForegroundWindow(hwnd);
+            user32::TrackPopupMenu(hmenu, 0, p.x, p.y, (winapi::TPM_BOTTOMALIGN | winapi::TPM_LEFTALIGN) as i32, hwnd, std::ptr::null_mut());
         }
     }
     if msg == winapi::winuser::WM_DESTROY {
@@ -34,7 +53,6 @@ pub unsafe extern "system" fn window_proc(h_wnd :HWND,
 }
 
 fn main() {
-
     // Create window
 
     let class_name = to_wstring("my_window");
@@ -57,7 +75,6 @@ fn main() {
             lpszClassName: class_name.as_ptr(),
         };
     }
-    let hwnd;
     unsafe {
         user32::RegisterClassW(&wnd);
         hwnd = user32::CreateWindowExW(0,
@@ -97,46 +114,45 @@ fn main() {
         Data3: 0 as winapi::c_ushort,
         Data4: [0; 8]
     };
-    let mut nid_add = winapi::shellapi::NOTIFYICONDATAA {
-        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
-        hWnd: hwnd,
-        uID: 0x1 as UINT,
-        uFlags: winapi::NIF_MESSAGE,
-        uCallbackMessage: winapi::WM_USER + 1,
-        hIcon: 0 as HICON,
-        szTip: b,
-        dwState: 0 as DWORD,
-        dwStateMask: 0 as DWORD,
-        szInfo: g,
-        uTimeout: 0 as UINT,
-        szInfoTitle: a,
-        dwInfoFlags: 0 as UINT,
-        guidItem: guid,
-        hBalloonIcon: 0 as HICON
-    };
     unsafe {
+        let mut nid_add = winapi::shellapi::NOTIFYICONDATAA {
+            cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
+            hWnd: hwnd,
+            uID: 0x1 as UINT,
+            uFlags: winapi::NIF_MESSAGE,
+            uCallbackMessage: winapi::WM_USER + 1,
+            hIcon: 0 as HICON,
+            szTip: b,
+            dwState: 0 as DWORD,
+            dwStateMask: 0 as DWORD,
+            szInfo: g,
+            uTimeout: 0 as UINT,
+            szInfoTitle: a,
+            dwInfoFlags: 0 as UINT,
+            guidItem: guid,
+            hBalloonIcon: 0 as HICON
+        };
         println!("Adding icon! {}", shell32::Shell_NotifyIconA(winapi::NIM_ADD,
                                                                &mut nid_add as *mut winapi::shellapi::NOTIFYICONDATAA));
     }
-
-    let mut nid = winapi::shellapi::NOTIFYICONDATAA {
-        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
-        hWnd: hwnd,
-        uID: 0x1 as UINT,
-        uFlags: winapi::NIF_ICON,
-        uCallbackMessage: 0 as UINT,
-        hIcon: icon,
-        szTip: b,
-        dwState: 0 as DWORD,
-        dwStateMask: 0 as DWORD,
-        szInfo: g,
-        uTimeout: 0 as UINT,
-        szInfoTitle: a,
-        dwInfoFlags: 0 as UINT,
-        guidItem: guid,
-        hBalloonIcon: 0 as HICON
-    };
     unsafe {
+        let mut nid = winapi::shellapi::NOTIFYICONDATAA {
+            cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
+            hWnd: hwnd,
+            uID: 0x1 as UINT,
+            uFlags: winapi::NIF_ICON,
+            uCallbackMessage: 0 as UINT,
+            hIcon: icon,
+            szTip: b,
+            dwState: 0 as DWORD,
+            dwStateMask: 0 as DWORD,
+            szInfo: g,
+            uTimeout: 0 as UINT,
+            szInfoTitle: a,
+            dwInfoFlags: 0 as UINT,
+            guidItem: guid,
+            hBalloonIcon: 0 as HICON
+        };
         println!("Setting icon! {}", shell32::Shell_NotifyIconA(winapi::NIM_MODIFY,
                                                                 &mut nid as *mut winapi::shellapi::NOTIFYICONDATAA));
     }
@@ -149,32 +165,33 @@ fn main() {
     for i in 0..tt.len() {
         b[i] = tt[i].clone() as i8;
     }
-    let mut nid_tip = winapi::shellapi::NOTIFYICONDATAA {
-        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
-        hWnd: hwnd,
-        uID: 0x1 as UINT,
-        uFlags: winapi::NIF_TIP,
-        uCallbackMessage: 0 as UINT,
-        hIcon: 0 as HICON,
-        szTip: b,
-        dwState: 0 as DWORD,
-        dwStateMask: 0 as DWORD,
-        szInfo: g,
-        uTimeout: 0 as UINT,
-        szInfoTitle: a,
-        dwInfoFlags: 0 as UINT,
-        guidItem: guid,
-        hBalloonIcon: 0 as HICON
-    };
     unsafe {
+        let mut nid_tip = winapi::shellapi::NOTIFYICONDATAA {
+            cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
+            hWnd: hwnd,
+            uID: 0x1 as UINT,
+            uFlags: winapi::NIF_TIP,
+            uCallbackMessage: 0 as UINT,
+            hIcon: 0 as HICON,
+            szTip: b,
+            dwState: 0 as DWORD,
+            dwStateMask: 0 as DWORD,
+            szInfo: g,
+            uTimeout: 0 as UINT,
+            szInfoTitle: a,
+            dwInfoFlags: 0 as UINT,
+            guidItem: guid,
+            hBalloonIcon: 0 as HICON
+        };
         println!("Setting tip! {}", shell32::Shell_NotifyIconA(winapi::NIM_MODIFY,
-                                                                &mut nid_tip as *mut winapi::shellapi::NOTIFYICONDATAA));
+                                                               &mut nid_tip as *mut winapi::shellapi::NOTIFYICONDATAA));
     }
 
     // Add Menu
+    let m;
     unsafe {
-        let menu = user32::CreatePopupMenu();
-        let m = winapi::MENUINFO {
+        hmenu = user32::CreatePopupMenu();
+        m = winapi::MENUINFO {
             cbSize: std::mem::size_of::<winapi::MENUINFO>() as DWORD,
             fMask: winapi::MIM_APPLYTOSUBMENUS | winapi::MIM_STYLE,
             dwStyle: winapi::MNS_NOTIFYBYPOS,
@@ -183,8 +200,30 @@ fn main() {
             dwContextHelpID: 0 as DWORD,
             dwMenuData: 0 as winapi::ULONG_PTR
         };
-        println!("Created menu! {}", user32::SetMenuInfo(menu, &m as *const winapi::MENUINFO));
+        println!("Created menu! {}", user32::SetMenuInfo(hmenu, &m as *const winapi::MENUINFO));
     }
+
+    // Add Menu Item
+    unsafe {
+        let idx : u32 = 1;
+        let mut st = to_wstring("Quit");
+        let item = winapi::MENUITEMINFOW {
+            cbSize: std::mem::size_of::<winapi::MENUITEMINFOW>() as UINT,
+            fMask: (winapi::MIIM_FTYPE | winapi::MIIM_STRING | winapi::MIIM_DATA | winapi::MIIM_STATE),
+            fType: winapi::MFT_STRING,
+            fState: 0 as UINT,
+            wID: 0 as UINT,
+            hSubMenu: 0 as HMENU,
+            hbmpChecked: 0 as HBITMAP,
+            hbmpUnchecked: 0 as HBITMAP,
+            dwItemData: idx as u64,
+            dwTypeData: st.as_mut_ptr(),
+            cch: 10,
+            hbmpItem: 0 as HBITMAP
+        };
+        user32::InsertMenuItemW(hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
+    }
+
     // Run message loop
 
     let mut msg = winapi::winuser::MSG {
@@ -208,6 +247,7 @@ fn main() {
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
