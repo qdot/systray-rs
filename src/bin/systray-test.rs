@@ -20,6 +20,13 @@ pub unsafe extern "system" fn window_proc(h_wnd :HWND,
                                           w_param :WPARAM,
                                           l_param :LPARAM) -> LRESULT
 {
+    if msg == winapi::winuser::WM_USER + 1 {
+        println!("Got callback message! {}", l_param);
+        if l_param as UINT == winapi::winuser::WM_LBUTTONUP {
+            println!("Posting quit message! {}", l_param);
+            user32::PostQuitMessage(0);
+        }
+    }
     if msg == winapi::winuser::WM_DESTROY {
         user32::PostQuitMessage(0);
     }
@@ -91,7 +98,7 @@ fn main() {
         Data4: [0; 8]
     };
     let mut nid_add = winapi::shellapi::NOTIFYICONDATAA {
-        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD, //This should actually be the struct size :|
+        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
         hWnd: hwnd,
         uID: 0x1 as UINT,
         uFlags: winapi::NIF_MESSAGE,
@@ -113,11 +120,11 @@ fn main() {
     }
 
     let mut nid = winapi::shellapi::NOTIFYICONDATAA {
-        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD, //This should actually be the struct size :|
+        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
         hWnd: hwnd,
         uID: 0x1 as UINT,
         uFlags: winapi::NIF_ICON,
-        uCallbackMessage: winapi::WM_USER + 1,
+        uCallbackMessage: 0 as UINT,
         hIcon: icon,
         szTip: b,
         dwState: 0 as DWORD,
@@ -143,11 +150,11 @@ fn main() {
         b[i] = tt[i].clone() as i8;
     }
     let mut nid_tip = winapi::shellapi::NOTIFYICONDATAA {
-        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD, //This should actually be the struct size :|
+        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
         hWnd: hwnd,
         uID: 0x1 as UINT,
         uFlags: winapi::NIF_TIP,
-        uCallbackMessage: winapi::WM_USER + 1,
+        uCallbackMessage: 0 as UINT,
         hIcon: 0 as HICON,
         szTip: b,
         dwState: 0 as DWORD,
@@ -165,7 +172,19 @@ fn main() {
     }
 
     // Add Menu
-    
+    unsafe {
+        let menu = user32::CreatePopupMenu();
+        let m = winapi::MENUINFO {
+            cbSize: std::mem::size_of::<winapi::MENUINFO>() as DWORD,
+            fMask: winapi::MIM_APPLYTOSUBMENUS | winapi::MIM_STYLE,
+            dwStyle: winapi::MNS_NOTIFYBYPOS,
+            cyMax: 0 as UINT,
+            hbrBack: 0 as HBRUSH,
+            dwContextHelpID: 0 as DWORD,
+            dwMenuData: 0 as winapi::ULONG_PTR
+        };
+        println!("Created menu! {}", user32::SetMenuInfo(menu, &m as *const winapi::MENUINFO));
+    }
     // Run message loop
 
     let mut msg = winapi::winuser::MSG {
@@ -176,16 +195,10 @@ fn main() {
         time: 0 as DWORD,
         pt: winapi::windef::POINT { x: 0, y: 0, },
     };
-    let mut pm;
     loop {
         unsafe {
-            pm = user32::GetMessageW(&mut msg, 0 as HWND, 0, 0);
+            user32::GetMessageW(&mut msg, 0 as HWND, 0, 0);
         }
-
-        if pm == 0 {
-            continue;
-        }
-
         if msg.message == winapi::winuser::WM_QUIT {
             break;
         }
