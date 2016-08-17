@@ -4,7 +4,7 @@ extern crate user32;
 extern crate shell32;
 extern crate libc;
 
-use std::collections::HashMap;
+use std;
 use winapi::windef::{HWND, HMENU, HICON, HBRUSH, HBITMAP};
 use winapi::winnt::{LPCWSTR};
 use winapi::minwindef::{UINT, DWORD, WPARAM, LPARAM, LRESULT, HINSTANCE};
@@ -51,15 +51,6 @@ pub unsafe extern "system" fn window_proc(h_wnd :HWND,
 }
 
 fn get_nid_struct() -> winapi::shellapi::NOTIFYICONDATAA {
-    let a : [i8; 64] = [0; 64];
-    let mut b : [i8; 128] = [0; 128];
-    let g : [i8; 256] = [0; 256];
-    let guid = winapi::GUID {
-        Data1: 0 as winapi::c_ulong,
-        Data2: 0 as winapi::c_ushort,
-        Data3: 0 as winapi::c_ushort,
-        Data4: [0; 8]
-    };
     unsafe {
         winapi::shellapi::NOTIFYICONDATAA {
             cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
@@ -68,20 +59,25 @@ fn get_nid_struct() -> winapi::shellapi::NOTIFYICONDATAA {
             uFlags: 0 as UINT,
             uCallbackMessage: 0 as UINT,
             hIcon: 0 as HICON,
-            szTip: b,
+            szTip: [0 as i8; 128],
             dwState: 0 as DWORD,
             dwStateMask: 0 as DWORD,
-            szInfo: g,
+            szInfo: [0 as i8; 256],
             uTimeout: 0 as UINT,
-            szInfoTitle: a,
+            szInfoTitle: [0 as i8; 64],
             dwInfoFlags: 0 as UINT,
-            guidItem: guid,
+            guidItem: winapi::GUID {
+                Data1: 0 as winapi::c_ulong,
+                Data2: 0 as winapi::c_ushort,
+                Data3: 0 as winapi::c_ushort,
+                Data4: [0; 8]
+            },
             hBalloonIcon: 0 as HICON
         }
     }
 }
 
-fn create_window() {
+pub fn create_window() {
     let class_name = to_wstring("my_window");
     unsafe {
         instance = kernel32::GetModuleHandleA(std::ptr::null_mut());
@@ -150,7 +146,7 @@ fn set_icon(icon: HICON) {
     }
 }
 
-fn set_icon_from_resource() {
+pub fn set_icon_from_resource() {
     let icon;
     unsafe {
         icon = user32::LoadImageA(instance,
@@ -163,15 +159,10 @@ fn set_icon_from_resource() {
     set_icon(icon);
 }
 
-fn set_icon_from_file() {
+pub fn set_icon_from_file() {
 }
 
-fn setup_menu() {
-    unsafe {
-    }
-}
-
-fn set_tooltip(tooltip: &String) {
+pub fn set_tooltip(tooltip: &String) {
     // Add Tooltip
     // Gross way to convert String to [i8; 128]
     // TODO: Clean up conversion, test for length so we don't panic at runtime
@@ -187,7 +178,7 @@ fn set_tooltip(tooltip: &String) {
     }
 }
 
-fn add_menu_item(item_name: &String) {
+pub fn add_menu_item(item_name: &String) {
     let idx : u32 = 1;
     let mut st = to_wstring(item_name);
     let item = winapi::MENUITEMINFOW {
@@ -209,7 +200,7 @@ fn add_menu_item(item_name: &String) {
     }
 }
 
-fn run_loop() {
+pub fn run_loop() {
     // Run message loop
     let mut msg = winapi::winuser::MSG {
         hwnd: 0 as HWND,
@@ -231,12 +222,4 @@ fn run_loop() {
             user32::DispatchMessageW(&mut msg);
         }
     }
-}
-
-fn main() {
-    create_window();
-    setup_menu();
-    set_tooltip(&"Whatever".to_string());
-    add_menu_item(&"Something".to_string());
-    run_loop();
 }
