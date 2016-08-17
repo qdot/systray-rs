@@ -4,6 +4,7 @@ extern crate user32;
 extern crate shell32;
 extern crate libc;
 
+use std::collections::HashMap;
 use winapi::windef::{HWND, HMENU, HICON, HBRUSH, HBITMAP};
 use winapi::winnt::{LPCWSTR};
 use winapi::minwindef::{UINT, DWORD, WPARAM, LPARAM, LRESULT, HINSTANCE};
@@ -25,11 +26,6 @@ pub unsafe extern "system" fn window_proc(h_wnd :HWND,
                                           l_param :LPARAM) -> LRESULT
 {
     if msg == winapi::winuser::WM_USER + 1 {
-        println!("Got callback message! {}", l_param);
-        // if l_param as UINT == winapi::winuser::WM_LBUTTONUP {
-        //     println!("Posting quit message! {}", l_param);
-        //     user32::PostQuitMessage(0);
-        // }
         if l_param as UINT == winapi::winuser::WM_LBUTTONUP  {
             let mut p = winapi::POINT {
                 x: 0,
@@ -39,7 +35,13 @@ pub unsafe extern "system" fn window_proc(h_wnd :HWND,
                 return 1;
             }
             user32::SetForegroundWindow(hwnd);
-            user32::TrackPopupMenu(hmenu, 0, p.x, p.y, (winapi::TPM_BOTTOMALIGN | winapi::TPM_LEFTALIGN) as i32, hwnd, std::ptr::null_mut());
+            user32::TrackPopupMenu(hmenu,
+                                   0,
+                                   p.x,
+                                   p.y,
+                                   (winapi::TPM_BOTTOMALIGN | winapi::TPM_LEFTALIGN) as i32,
+                                   hwnd,
+                                   std::ptr::null_mut());
         }
     }
     if msg == winapi::winuser::WM_DESTROY {
@@ -92,8 +94,10 @@ fn create_window() {
             cbClsExtra: 0,
             cbWndExtra: 0,
             hInstance: 0 as HINSTANCE,
-            hIcon: user32::LoadIconW(0 as HINSTANCE, winapi::winuser::IDI_APPLICATION),
-            hCursor: user32::LoadCursorW(0 as HINSTANCE, winapi::winuser::IDI_APPLICATION),
+            hIcon: user32::LoadIconW(0 as HINSTANCE,
+                                     winapi::winuser::IDI_APPLICATION),
+            hCursor: user32::LoadCursorW(0 as HINSTANCE,
+                                         winapi::winuser::IDI_APPLICATION),
             hbrBackground: 16 as HBRUSH,
             lpszMenuName: 0 as LPCWSTR,
             lpszClassName: class_name.as_ptr(),
@@ -197,7 +201,7 @@ fn add_menu_item(item_name: &String) {
         hbmpUnchecked: 0 as HBITMAP,
         dwItemData: idx as u64,
         dwTypeData: st.as_mut_ptr(),
-        cch: item_name.len() * 2, // 16 bit characters
+        cch: (item_name.len() * 2) as u32, // 16 bit characters
         hbmpItem: 0 as HBITMAP
     };
     unsafe {
