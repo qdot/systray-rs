@@ -5,15 +5,29 @@ extern crate shell32;
 extern crate libc;
 
 use std;
+use std::cell::RefCell;
+use std::sync::mpsc::Sender;
+use SystrayEvent;
+use std::os::windows::ffi::OsStrExt;
+use std::ffi::OsStr;
 use winapi::windef::{HWND, HMENU, HICON, HBRUSH, HBITMAP};
 use winapi::winnt::{LPCWSTR};
 use winapi::minwindef::{UINT, DWORD, WPARAM, LPARAM, LRESULT, HINSTANCE};
 use winapi::winuser::{WNDCLASSW, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT};
-use std::os::windows::ffi::OsStrExt;
-use std::ffi::OsStr;
 
 fn to_wstring(str : &str) -> Vec<u16> {
-    OsStr::new(str).encode_wide().chain(Some(0).into_iter()).collect()
+    OsStr::new(str).encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>()
+}
+
+// Got this idea from glutin. Yay open source! Boo stupid winproc! Even more boo
+// doing SetLongPtr tho.
+thread_local!(pub static CONTEXT_STASH: RefCell<Option<WindowsLoopData>> = RefCell::new(None));
+
+pub struct WindowsLoopData {
+    pub hwnd: HWND,
+    pub hinstance: HINSTANCE,
+    pub hmenu: HMENU,
+    pub sender: Sender<SystrayEvent>
 }
 
 static mut instance : HINSTANCE = 0 as HINSTANCE;
@@ -50,29 +64,37 @@ pub unsafe extern "system" fn window_proc(h_wnd :HWND,
     return user32::DefWindowProcW(h_wnd, msg, w_param, l_param);
 }
 
-fn get_nid_struct() -> winapi::shellapi::NOTIFYICONDATAA {
-    unsafe {
-        winapi::shellapi::NOTIFYICONDATAA {
-            cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
-            hWnd: hwnd,
-            uID: 0x1 as UINT,
-            uFlags: 0 as UINT,
-            uCallbackMessage: 0 as UINT,
-            hIcon: 0 as HICON,
-            szTip: [0 as i8; 128],
-            dwState: 0 as DWORD,
-            dwStateMask: 0 as DWORD,
-            szInfo: [0 as i8; 256],
-            uTimeout: 0 as UINT,
-            szInfoTitle: [0 as i8; 64],
-            dwInfoFlags: 0 as UINT,
-            guidItem: winapi::GUID {
-                Data1: 0 as winapi::c_ulong,
-                Data2: 0 as winapi::c_ushort,
-                Data3: 0 as winapi::c_ushort,
-                Data4: [0; 8]
-            },
-            hBalloonIcon: 0 as HICON
+// Would be nice to have default for the notify icon struct, since there's a lot
+// of setup code otherwise. To get around orphan trait error, define trait here.
+trait Default {
+    fn default() -> Self;
+}
+
+impl Default for winapi::shellapi::NOTIFYICONDATAA {
+    fn default() -> winapi::shellapi::NOTIFYICONDATAA {
+        unsafe {
+            winapi::shellapi::NOTIFYICONDATAA {
+                cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
+                hWnd: hwnd,
+                uID: 0x1 as UINT,
+                uFlags: 0 as UINT,
+                uCallbackMessage: 0 as UINT,
+                hIcon: 0 as HICON,
+                szTip: [0 as i8; 128],
+                dwState: 0 as DWORD,
+                dwStateMask: 0 as DWORD,
+                szInfo: [0 as i8; 256],
+                uTimeout: 0 as UINT,
+                szInfoTitle: [0 as i8; 64],
+                dwInfoFlags: 0 as UINT,
+                guidItem: winapi::GUID {
+                    Data1: 0 as winapi::c_ulong,
+                    Data2: 0 as winapi::c_ushort,
+                    Data3: 0 as winapi::c_ushort,
+                    Data4: [0; 8]
+                },
+                hBalloonIcon: 0 as HICON
+            }
         }
     }
 }
@@ -113,7 +135,7 @@ pub fn create_window() {
                                        std::ptr::null_mut());
         println!("Got window! {:?}", hwnd as u32);
         println!("Error? {}", kernel32::GetLastError());
-        let mut nid = get_nid_struct();
+        let mut nid = winapi::shellapi::NOTIFYICONDATAA::default();
         nid.uID = 0x1;
         nid.uFlags = winapi::NIF_MESSAGE;
         nid.uCallbackMessage = winapi::WM_USER + 1;
@@ -137,7 +159,7 @@ pub fn create_window() {
 
 fn set_icon(icon: HICON) {
     unsafe {
-        let mut nid = get_nid_struct();
+        let mut nid = winapi::shellapi::NOTIFYICONDATAA::default();
         nid.uFlags = winapi::NIF_ICON;
         nid.hIcon = icon;
         println!("Setting icon! {}", shell32::Shell_NotifyIconA(winapi::NIM_MODIFY,
@@ -167,7 +189,7 @@ pub fn set_tooltip(tooltip: &String) {
     // Gross way to convert String to [i8; 128]
     // TODO: Clean up conversion, test for length so we don't panic at runtime
     let tt = tooltip.as_bytes().clone();
-    let mut nid = get_nid_struct();
+    let mut nid = winapi::shellapi::NOTIFYICONDATAA::default();
     for i in 0..tt.len() {
         nid.szTip[i] = tt[i] as i8;
     }
