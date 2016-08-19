@@ -1,10 +1,11 @@
-use {SystrayEvent, SystrayError};
+use {SystrayEvent, SystrayError, Callback};
 use std;
 use std::cell::RefCell;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::os::windows::ffi::OsStrExt;
 use std::ffi::OsStr;
 use std::thread;
+use std::collections::HashMap;
 use winapi;
 use user32;
 use kernel32;
@@ -35,7 +36,7 @@ unsafe impl Sync for WindowInfo {}
 #[derive(Clone)]
 struct WindowsLoopData {
     pub info: WindowInfo,
-    pub sender: Sender<SystrayEvent>
+    pub tx: Sender<SystrayEvent>
 }
 
 unsafe extern "system" fn window_proc(h_wnd :HWND,
@@ -43,6 +44,23 @@ unsafe extern "system" fn window_proc(h_wnd :HWND,
                                       w_param :WPARAM,
                                       l_param :LPARAM) -> LRESULT
 {
+    if msg == winapi::winuser::WM_MENUCOMMAND {
+        WININFO_STASH.with(|stash| {
+            let stash = stash.borrow();
+            let stash = stash.as_ref();
+            if let Some(stash) = stash {
+                let menuId = user32::GetMenuItemID(stash.info.hmenu,
+                                                   w_param as i32) as i32;
+                if menuId != -1 {
+                    stash.tx.send(SystrayEvent {
+                        menu_index: menuId as u32,
+                        menu_checked: false
+                    });
+                }
+            }
+        });
+    }
+
     if msg == winapi::winuser::WM_USER + 1 {
         if l_param as UINT == winapi::winuser::WM_LBUTTONUP  {
             let mut p = winapi::POINT {
@@ -73,7 +91,6 @@ unsafe extern "system" fn window_proc(h_wnd :HWND,
     }
     return user32::DefWindowProcW(h_wnd, msg, w_param, l_param);
 }
-
 // Would be nice to have default for the notify icon struct, since there's a lot
 // of setup code otherwise. To get around orphan trait error, define trait here.
 trait Default {
@@ -160,6 +177,7 @@ unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
         dwMenuData: 0 as winapi::ULONG_PTR
     };
     println!("Created menu! {}", user32::SetMenuInfo(hmenu, &m as *const winapi::MENUINFO));
+
     Ok(WindowInfo {
         hwnd: hwnd,
         hmenu: hmenu,
@@ -180,9 +198,6 @@ unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
 //     set_icon(icon);
 // }
 
-pub fn set_icon_from_file() {
-}
-
 unsafe fn run_loop() {
     // Run message loop
     let mut msg = winapi::winuser::MSG {
@@ -197,8 +212,10 @@ unsafe fn run_loop() {
         println!("RUNNING LOOP");
         user32::GetMessageW(&mut msg, 0 as HWND, 0, 0);
         if msg.message == winapi::winuser::WM_QUIT {
+            println!("QUITTING LOOP");
             break;
         }
+        println!("{}", msg.message);
         user32::TranslateMessage(&mut msg);
         user32::DispatchMessageW(&mut msg);
     }
@@ -207,8 +224,16 @@ unsafe fn run_loop() {
 pub struct Window {
     info: WindowInfo,
     windows_loop: thread::JoinHandle<()>,
+    menu_idx: u32,
+    pub callback: HashMap<u32, Callback>,
     pub rx: Receiver<SystrayEvent>,
 }
+
+fn make_callback<F>(f: F) -> Callback
+    where F: std::ops::Fn<(),Output=()> + 'static {
+    Box::new(f) as Callback
+}
+
 
 impl Window {
     pub fn new() -> Self {
@@ -216,15 +241,26 @@ impl Window {
         let (event_tx, event_rx) = channel();
         let windows_loop = thread::spawn(move || {
             unsafe {
-                match init_window() {
-                    Ok(i) => tx.send(Ok(i)).ok(),
+                let i = init_window();
+                let k;
+                match i {
+                    Ok(j) => {
+                        tx.send(Ok(j.clone())).ok();
+                        k = j;
+                    }
                     Err(e) => {
                         // If creation didn't work, return out of the thread.
                         tx.send(Err(e)).ok();
                         return;
                     }
                 };
-                let e = event_tx;
+                WININFO_STASH.with(|stash| {
+                    let data = WindowsLoopData {
+                        info: k,
+                        tx: event_tx
+                    };
+                    (*stash.borrow_mut()) = Some(data);
+                });
                 run_loop();
             }
         });
@@ -237,7 +273,9 @@ impl Window {
         Window {
             info: info,
             windows_loop: windows_loop,
-            rx: event_rx
+            rx: event_rx,
+            menu_idx: 0,
+            callback: HashMap::new()
         }
     }
 
@@ -266,23 +304,26 @@ impl Window {
         }
     }
 
-    pub fn add_menu_item(&self, item_name: &String) {
-        let idx : u32 = 1;
+    pub fn add_menu_item<F>(&mut self, item_name: &String, f: F)
+        where F: std::ops::Fn<(),Output=()> + 'static {
         let mut st = to_wstring(item_name);
+        let idx = self.menu_idx;
+        self.menu_idx += 1;
         let item = winapi::MENUITEMINFOW {
             cbSize: std::mem::size_of::<winapi::MENUITEMINFOW>() as UINT,
-            fMask: (winapi::MIIM_FTYPE | winapi::MIIM_STRING | winapi::MIIM_DATA | winapi::MIIM_STATE),
+            fMask: (winapi::MIIM_FTYPE | winapi::MIIM_STRING | winapi::MIIM_ID | winapi::MIIM_STATE),
             fType: winapi::MFT_STRING,
             fState: 0 as UINT,
-            wID: 0 as UINT,
+            wID: idx as UINT,
             hSubMenu: 0 as HMENU,
             hbmpChecked: 0 as HBITMAP,
             hbmpUnchecked: 0 as HBITMAP,
-            dwItemData: idx as u64,
+            dwItemData: 0 as u64,
             dwTypeData: st.as_mut_ptr(),
             cch: (item_name.len() * 2) as u32, // 16 bit characters
             hbmpItem: 0 as HBITMAP
         };
+        self.callback.insert(idx, make_callback(f));
         unsafe {
             user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
         }
@@ -297,5 +338,29 @@ impl Window {
             println!("Setting icon! {}", shell32::Shell_NotifyIconA(winapi::NIM_MODIFY,
                                                                     &mut nid as *mut winapi::shellapi::NOTIFYICONDATAA));
         }
+    }
+
+    pub fn wait_for_message(&self) {
+        loop {
+            let msg = self.rx.recv().unwrap();
+            println!("Got {}", msg.menu_index);
+            if self.callback.contains_key(&msg.menu_index) {
+                self.callback.get(&msg.menu_index).map(|fun| fun());
+            }
+        }
+    }
+
+    pub fn set_icon_from_file(&self, icon_file: &String) {
+        let wstr_icon_file = to_wstring(&icon_file);
+        let mut hicon = std::ptr::null_mut() as HICON;
+        unsafe {
+            hicon = user32::LoadImageW(std::ptr::null_mut() as HINSTANCE, wstr_icon_file.as_ptr(),
+                                           winapi::IMAGE_ICON, 64, 64, winapi::LR_LOADFROMFILE) as HICON;
+        }
+        if hicon == std::ptr::null_mut() as HICON {
+            // TODO Throw Error
+            return;
+        }
+        self.set_icon(hicon);
     }
 }

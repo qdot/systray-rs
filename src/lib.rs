@@ -1,5 +1,6 @@
 // Systray Lib
 
+#![feature(unboxed_closures)]
 #[cfg(target_os = "windows")]
 extern crate winapi;
 #[cfg(target_os = "windows")]
@@ -25,3 +26,5 @@ pub struct SystrayEvent {
     menu_index: u32,
     menu_checked: bool
 }
+
+type Callback = Box<(Fn<(),Output=()> + 'static)>;
