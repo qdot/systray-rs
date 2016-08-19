@@ -185,19 +185,6 @@ unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
     })
 }
 
-// pub fn set_icon_from_resource() {
-//     let icon;
-//     unsafe {
-//         icon = user32::LoadImageA(instance,
-//                                   std::mem::transmute(0x1 as isize),
-//                                   winapi::IMAGE_ICON,
-//                                   64,
-//                                   64,
-//                                   0) as HICON;
-//     }
-//     set_icon(icon);
-// }
-
 unsafe fn run_loop() {
     // Run message loop
     let mut msg = winapi::winuser::MSG {
@@ -400,12 +387,25 @@ impl Window {
         }
     }
 
+    pub fn set_icon_from_resource(&self, resource_name: &String) {
+        let icon;
+        unsafe {
+            icon = user32::LoadImageW(self.info.hinstance,
+                                      to_wstring(&resource_name).as_ptr(),
+                                      winapi::IMAGE_ICON,
+                                      64,
+                                      64,
+                                      0) as HICON;
+        }
+        self.set_icon(icon);
+    }
+
     pub fn set_icon_from_file(&self, icon_file: &String) {
         let wstr_icon_file = to_wstring(&icon_file);
-        let mut hicon = std::ptr::null_mut() as HICON;
+        let hicon;
         unsafe {
             hicon = user32::LoadImageW(std::ptr::null_mut() as HINSTANCE, wstr_icon_file.as_ptr(),
-                                           winapi::IMAGE_ICON, 64, 64, winapi::LR_LOADFROMFILE) as HICON;
+                                       winapi::IMAGE_ICON, 64, 64, winapi::LR_LOADFROMFILE) as HICON;
         }
         if hicon == std::ptr::null_mut() as HICON {
             // TODO Throw Error
