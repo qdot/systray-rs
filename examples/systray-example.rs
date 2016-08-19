@@ -9,9 +9,6 @@ fn main() {
     let mut w = &mut app.window;
     w.set_icon_from_file(&"C:\\Users\\qdot\\code\\git-projects\\systray-rs\\resources\\rust.ico".to_string());
     w.set_tooltip(&"Whatever".to_string());
-    w.add_menu_item(&"Something".to_string(), || {
-        //w.quit();
-    });
     w.add_menu_item(&"Print a thing".to_string(), || {
         println!("Printing a thing!");
     });

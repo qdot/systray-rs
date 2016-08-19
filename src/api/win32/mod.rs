@@ -223,7 +223,7 @@ unsafe fn run_loop() {
 
 pub struct Window {
     info: WindowInfo,
-    windows_loop: thread::JoinHandle<()>,
+    windows_loop: Option<thread::JoinHandle<()>>,
     menu_idx: u32,
     pub callback: HashMap<u32, Callback>,
     pub rx: Receiver<SystrayEvent>,
@@ -264,22 +264,28 @@ impl Window {
                 panic!(e);
             }
         };
-        let w = Window {
+        let mut w = Window {
             info: info,
-            windows_loop: windows_loop,
+            windows_loop: Some(windows_loop),
             rx: event_rx,
             menu_idx: 0,
             callback: HashMap::new()
         };
+        // TODO This really shouldn't be compulsory. Need to figure out how to
+        // make closures that can wrap around window object and know it.
+        w.add_menu_entry(&"Quit".to_string());
+        w.add_menu_separator();
         Ok(w)
     }
 
-    pub fn quit(&self) {
+    pub fn quit(&mut self) {
         unsafe {
-            user32::PostQuitMessage(0);
+            user32::PostMessageW(self.info.hwnd, winapi::WM_DESTROY,
+                                 0 as WPARAM, 0 as LPARAM);
         }
-        //let w = self.windows_loop.take();
-        //w.join();
+        if let Some(t) = self.windows_loop.take() {
+            t.join().ok();
+        }
     }
 
     pub fn set_tooltip(&self, tooltip: &String) {
@@ -296,6 +302,51 @@ impl Window {
         unsafe {
             println!("Setting tip! {}", shell32::Shell_NotifyIconA(winapi::NIM_MODIFY,
                                                                    &mut nid as *mut winapi::shellapi::NOTIFYICONDATAA));
+        }
+    }
+
+    fn add_menu_entry(&mut self, item_name: &String) {
+        let mut st = to_wstring(item_name);
+        let idx = self.menu_idx;
+        self.menu_idx += 1;
+        let item = winapi::MENUITEMINFOW {
+            cbSize: std::mem::size_of::<winapi::MENUITEMINFOW>() as UINT,
+            fMask: (winapi::MIIM_FTYPE | winapi::MIIM_STRING | winapi::MIIM_ID | winapi::MIIM_STATE),
+            fType: winapi::MFT_STRING,
+            fState: 0 as UINT,
+            wID: idx as UINT,
+            hSubMenu: 0 as HMENU,
+            hbmpChecked: 0 as HBITMAP,
+            hbmpUnchecked: 0 as HBITMAP,
+            dwItemData: 0 as u64,
+            dwTypeData: st.as_mut_ptr(),
+            cch: (item_name.len() * 2) as u32, // 16 bit characters
+            hbmpItem: 0 as HBITMAP
+        };
+        unsafe {
+            user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
+        }
+    }
+
+    pub fn add_menu_separator(&mut self) {
+        let idx = self.menu_idx;
+        self.menu_idx += 1;
+        let item = winapi::MENUITEMINFOW {
+            cbSize: std::mem::size_of::<winapi::MENUITEMINFOW>() as UINT,
+            fMask: winapi::MIIM_FTYPE,
+            fType: winapi::MFT_SEPARATOR,
+            fState: 0 as UINT,
+            wID: idx as UINT,
+            hSubMenu: 0 as HMENU,
+            hbmpChecked: 0 as HBITMAP,
+            hbmpUnchecked: 0 as HBITMAP,
+            dwItemData: 0 as u64,
+            dwTypeData: std::ptr::null_mut(),
+            cch: 0 as u32, // 16 bit characters
+            hbmpItem: 0 as HBITMAP
+        };
+        unsafe {
+            user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
         }
     }
 
@@ -335,10 +386,14 @@ impl Window {
         }
     }
 
-    pub fn wait_for_message(&self) {
+    pub fn wait_for_message(&mut self) {
         loop {
             let msg = self.rx.recv().unwrap();
             println!("Got {}", msg.menu_index);
+            if msg.menu_index == 0 {
+                self.quit();
+                return;
+            }
             if self.callback.contains_key(&msg.menu_index) {
                 self.callback.get(&msg.menu_index).map(|fun| fun());
             }
