@@ -1,4 +1,4 @@
-use {SystrayEvent, SystrayError, Callback};
+use {SystrayEvent, SystrayError, Callback, make_callback};
 use std;
 use std::cell::RefCell;
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -228,12 +228,6 @@ pub struct Window {
     pub callback: HashMap<u32, Callback>,
     pub rx: Receiver<SystrayEvent>,
 }
-
-fn make_callback<F>(f: F) -> Callback
-    where F: std::ops::Fn<(),Output=()> + 'static {
-    Box::new(f) as Callback
-}
-
 
 impl Window {
     pub fn new() -> Self {

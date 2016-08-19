@@ -28,3 +28,8 @@ pub struct SystrayEvent {
 }
 
 type Callback = Box<(Fn<(),Output=()> + 'static)>;
+
+fn make_callback<F>(f: F) -> Callback
+    where F: std::ops::Fn<(),Output=()> + 'static {
+    Box::new(f) as Callback
+}
