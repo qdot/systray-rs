@@ -12,9 +12,7 @@ extern crate shell32;
 #[cfg(target_os = "windows")]
 extern crate libc;
 
-#[cfg(target_os = "windows")]
-#[path="windows.rs"]
-pub mod systray;
+pub mod api;
 
 #[derive(Clone)]
 pub enum SystrayError {
@@ -25,6 +23,21 @@ pub enum SystrayError {
 pub struct SystrayEvent {
     menu_index: u32,
     menu_checked: bool
+}
+
+pub struct Application {
+    pub window: api::api::Window
+}
+
+impl Application {
+    pub fn new() -> Result<Application, SystrayError> {
+        match api::api::Window::new() {
+            Ok(w) => Ok(Application {
+                window: w
+            }),
+            Err(e) => Err(e)
+        }
+    }
 }
 
 type Callback = Box<(Fn<(),Output=()> + 'static)>;

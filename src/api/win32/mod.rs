@@ -230,7 +230,7 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Window, SystrayError> {
         let (tx, rx) = channel();
         let (event_tx, event_rx) = channel();
         let windows_loop = thread::spawn(move || {
@@ -264,13 +264,14 @@ impl Window {
                 panic!(e);
             }
         };
-        Window {
+        let w = Window {
             info: info,
             windows_loop: windows_loop,
             rx: event_rx,
             menu_idx: 0,
             callback: HashMap::new()
-        }
+        };
+        Ok(w)
     }
 
     pub fn quit(&self) {
