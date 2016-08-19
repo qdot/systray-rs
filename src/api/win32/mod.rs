@@ -49,13 +49,13 @@ unsafe extern "system" fn window_proc(h_wnd :HWND,
             let stash = stash.borrow();
             let stash = stash.as_ref();
             if let Some(stash) = stash {
-                let menuId = user32::GetMenuItemID(stash.info.hmenu,
-                                                   w_param as i32) as i32;
-                if menuId != -1 {
+                let menu_id = user32::GetMenuItemID(stash.info.hmenu,
+                                                    w_param as i32) as i32;
+                if menu_id != -1 {
                     stash.tx.send(SystrayEvent {
-                        menu_index: menuId as u32,
+                        menu_index: menu_id as u32,
                         menu_checked: false
-                    });
+                    }).ok();
                 }
             }
         });
@@ -99,29 +99,27 @@ trait Default {
 
 impl Default for winapi::shellapi::NOTIFYICONDATAA {
     fn default() -> winapi::shellapi::NOTIFYICONDATAA {
-        unsafe {
-            winapi::shellapi::NOTIFYICONDATAA {
-                cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
-                hWnd: 0 as HWND,
-                uID: 0x1 as UINT,
-                uFlags: 0 as UINT,
-                uCallbackMessage: 0 as UINT,
-                hIcon: 0 as HICON,
-                szTip: [0 as i8; 128],
-                dwState: 0 as DWORD,
-                dwStateMask: 0 as DWORD,
-                szInfo: [0 as i8; 256],
-                uTimeout: 0 as UINT,
-                szInfoTitle: [0 as i8; 64],
-                dwInfoFlags: 0 as UINT,
-                guidItem: winapi::GUID {
-                    Data1: 0 as winapi::c_ulong,
-                    Data2: 0 as winapi::c_ushort,
-                    Data3: 0 as winapi::c_ushort,
-                    Data4: [0; 8]
-                },
-                hBalloonIcon: 0 as HICON
-            }
+        winapi::shellapi::NOTIFYICONDATAA {
+            cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
+            hWnd: 0 as HWND,
+            uID: 0x1 as UINT,
+            uFlags: 0 as UINT,
+            uCallbackMessage: 0 as UINT,
+            hIcon: 0 as HICON,
+            szTip: [0 as i8; 128],
+            dwState: 0 as DWORD,
+            dwStateMask: 0 as DWORD,
+            szInfo: [0 as i8; 256],
+            uTimeout: 0 as UINT,
+            szInfoTitle: [0 as i8; 64],
+            dwInfoFlags: 0 as UINT,
+            guidItem: winapi::GUID {
+                Data1: 0 as winapi::c_ulong,
+                Data2: 0 as winapi::c_ushort,
+                Data3: 0 as winapi::c_ushort,
+                Data4: [0; 8]
+            },
+            hBalloonIcon: 0 as HICON
         }
     }
 }
@@ -356,10 +354,10 @@ impl Window {
             cch: (item_name.len() * 2) as u32, // 16 bit characters
             hbmpItem: 0 as HBITMAP
         };
-        self.callback.insert(idx, make_callback(f));
         unsafe {
             user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
         }
+        self.callback.insert(idx, make_callback(f));
     }
 
     fn set_icon(&self, icon: HICON) {
