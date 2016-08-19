@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Kyle Machulis <kyle@machul.is>"]
 build = "build.rs"
 
-[target.'cfg(windows)'.dependencies]
+[target.'cfg(target_os = "windows")'.dependencies]
 winapi={ path = "../winapi-rs/" }
 user32-sys={ path = "../winapi-rs/lib/user32/" }
 kernel32-sys={ path = "../winapi-rs/lib/kernel32/" }

@@ -1,3 +1,5 @@
+// Systray Lib
+
 #[cfg(target_os = "windows")]
 extern crate winapi;
 #[cfg(target_os = "windows")]
@@ -9,8 +11,15 @@ extern crate shell32;
 #[cfg(target_os = "windows")]
 extern crate libc;
 
-#[cfg(windows)]
-pub mod windows;
+#[cfg(target_os = "windows")]
+#[path="windows.rs"]
+pub mod systray;
+
+#[derive(Clone)]
+pub enum SystrayError {
+    OsError(String),
+    UnknownError,
+}
 
 pub struct SystrayEvent {
     menu_index: u32,
