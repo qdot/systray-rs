@@ -304,7 +304,7 @@ impl Window {
             hSubMenu: 0 as HMENU,
             hbmpChecked: 0 as HBITMAP,
             hbmpUnchecked: 0 as HBITMAP,
-            dwItemData: 0 as u64,
+            dwItemData: 0 as winapi::ULONG_PTR,
             dwTypeData: st.as_mut_ptr(),
             cch: (item_name.len() * 2) as u32, // 16 bit characters
             hbmpItem: 0 as HBITMAP
@@ -326,7 +326,7 @@ impl Window {
             hSubMenu: 0 as HMENU,
             hbmpChecked: 0 as HBITMAP,
             hbmpUnchecked: 0 as HBITMAP,
-            dwItemData: 0 as u64,
+            dwItemData: 0 as winapi::ULONG_PTR,
             dwTypeData: std::ptr::null_mut(),
             cch: 0 as u32, // 16 bit characters
             hbmpItem: 0 as HBITMAP
@@ -350,7 +350,7 @@ impl Window {
             hSubMenu: 0 as HMENU,
             hbmpChecked: 0 as HBITMAP,
             hbmpUnchecked: 0 as HBITMAP,
-            dwItemData: 0 as u64,
+            dwItemData: 0 as winapi::ULONG_PTR,
             dwTypeData: st.as_mut_ptr(),
             cch: (item_name.len() * 2) as u32, // 16 bit characters
             hbmpItem: 0 as HBITMAP
