@@ -21,4 +21,3 @@ skip_commits:
   files:
     - README.md
     - .travis.yml
-    - appveyor.yml
