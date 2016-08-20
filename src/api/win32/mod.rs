@@ -267,10 +267,6 @@ impl Window {
             menu_idx: 0,
             callback: HashMap::new()
         };
-        // TODO This really shouldn't be compulsory. Need to figure out how to
-        // make closures that can wrap around window object and know it.
-        w.add_menu_entry(&"Quit".to_string());
-        w.add_menu_separator();
         Ok(w)
     }
 
@@ -309,7 +305,7 @@ impl Window {
         item.dwTypeData = st.as_mut_ptr();
         item.cch = (item_name.len() * 2) as u32;
         unsafe {
-            user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
+            user32::InsertMenuItemW(self.info.hmenu, idx, 1, &item as *const winapi::MENUITEMINFOW);
         }
         idx
     }
@@ -322,7 +318,7 @@ impl Window {
         item.fType = winapi::MFT_SEPARATOR;
         item.wID = idx;
         unsafe {
-            user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
+            user32::InsertMenuItemW(self.info.hmenu, idx, 1, &item as *const winapi::MENUITEMINFOW);
         }
     }
 
