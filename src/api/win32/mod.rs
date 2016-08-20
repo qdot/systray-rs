@@ -64,28 +64,28 @@ unsafe extern "system" fn window_proc(h_wnd :HWND,
     if msg == winapi::winuser::WM_USER + 1 {
         if l_param as UINT == winapi::winuser::WM_LBUTTONUP ||
             l_param as UINT == winapi::winuser::WM_RBUTTONUP {
-            let mut p = winapi::POINT {
-                x: 0,
-                y: 0
-            };
-            if user32::GetCursorPos(&mut p as *mut winapi::POINT) == 0 {
-                return 1;
-            }
-            user32::SetForegroundWindow(h_wnd);
-            WININFO_STASH.with(|stash| {
-                let stash = stash.borrow();
-                let stash = stash.as_ref();
-                if let Some(stash) = stash {
-                    user32::TrackPopupMenu(stash.info.hmenu,
-                                           0,
-                                           p.x,
-                                           p.y,
-                                           (winapi::TPM_BOTTOMALIGN | winapi::TPM_LEFTALIGN) as i32,
-                                           h_wnd,
-                                           std::ptr::null_mut());
+                let mut p = winapi::POINT {
+                    x: 0,
+                    y: 0
+                };
+                if user32::GetCursorPos(&mut p as *mut winapi::POINT) == 0 {
+                    return 1;
                 }
-            });
-        }
+                user32::SetForegroundWindow(h_wnd);
+                WININFO_STASH.with(|stash| {
+                    let stash = stash.borrow();
+                    let stash = stash.as_ref();
+                    if let Some(stash) = stash {
+                        user32::TrackPopupMenu(stash.info.hmenu,
+                                               0,
+                                               p.x,
+                                               p.y,
+                                               (winapi::TPM_BOTTOMALIGN | winapi::TPM_LEFTALIGN) as i32,
+                                               h_wnd,
+                                               std::ptr::null_mut());
+                    }
+                });
+            }
     }
     if msg == winapi::winuser::WM_DESTROY {
         user32::PostQuitMessage(0);
