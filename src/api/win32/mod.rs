@@ -1,6 +1,6 @@
 use {SystrayEvent, SystrayError, Callback, make_callback};
 use std;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::os::windows::ffi::OsStrExt;
 use std::ffi::OsStr;
@@ -220,8 +220,8 @@ unsafe fn run_loop() {
 pub struct Window {
     info: WindowInfo,
     windows_loop: Option<thread::JoinHandle<()>>,
-    menu_idx: u32,
-    pub callback: HashMap<u32, Callback>,
+    menu_idx: Cell<u32>,
+    callback: RefCell<HashMap<u32, Callback>>,
     pub rx: Receiver<SystrayEvent>,
 }
 
@@ -260,12 +260,12 @@ impl Window {
                 panic!(e);
             }
         };
-        let mut w = Window {
+        let w = Window {
             info: info,
             windows_loop: Some(windows_loop),
             rx: event_rx,
-            menu_idx: 0,
-            callback: HashMap::new()
+            menu_idx: Cell::new(0),
+            callback: RefCell::new(HashMap::new())
         };
         Ok(w)
     }
@@ -294,10 +294,10 @@ impl Window {
         }
     }
 
-    fn add_menu_entry(&mut self, item_name: &String) -> u32 {
+    fn add_menu_entry(&self, item_name: &String) -> u32 {
         let mut st = to_wstring(item_name);
-        let idx = self.menu_idx;
-        self.menu_idx += 1;
+        let idx = self.menu_idx.get();
+        self.menu_idx.set(idx + 1);
         let mut item = get_menu_item_struct();
         item.fMask = winapi::MIIM_FTYPE | winapi::MIIM_STRING | winapi::MIIM_ID | winapi::MIIM_STATE;
         item.fType = winapi::MFT_STRING;
@@ -310,9 +310,9 @@ impl Window {
         idx
     }
 
-    pub fn add_menu_separator(&mut self) {
-        let idx = self.menu_idx;
-        self.menu_idx += 1;
+    pub fn add_menu_separator(&self) {
+        let idx = self.menu_idx.get();
+        self.menu_idx.set(idx + 1);
         let mut item = get_menu_item_struct();
         item.fMask = winapi::MIIM_FTYPE;
         item.fType = winapi::MFT_SEPARATOR;
@@ -322,10 +322,11 @@ impl Window {
         }
     }
 
-    pub fn add_menu_item<F>(&mut self, item_name: &String, f: F)
+    pub fn add_menu_item<F>(&self, item_name: &String, f: F)
         where F: std::ops::Fn(&Window) -> () + 'static {
         let idx = self.add_menu_entry(item_name);
-        self.callback.insert(idx, make_callback(f));
+        let mut m = self.callback.borrow_mut();
+        m.insert(idx, make_callback(f));
     }
 
     fn set_icon(&self, icon: HICON) {
@@ -351,9 +352,10 @@ impl Window {
                     break;
                 }
             }
-            if self.callback.contains_key(&msg.menu_index) {
-                let f = self.callback.get(&msg.menu_index).unwrap();
-                f(self);
+            if (*self.callback.borrow()).contains_key(&msg.menu_index) {
+                let f = (*self.callback.borrow_mut()).remove(&msg.menu_index).unwrap();
+                f(&self);
+                (*self.callback.borrow_mut()).insert(msg.menu_index, f);
             }
         }
     }
