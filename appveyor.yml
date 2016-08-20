@@ -12,6 +12,7 @@ install:
   - rustc -vV
   - cargo -vV
   - erase rust-install.exe
+  - git clone https://github.com/qdot/winapi-rs -b menu-api c:\projects\winapi-rs
 build_script:
   - cargo build
   - cargo package
