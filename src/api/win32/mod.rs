@@ -384,4 +384,19 @@ impl Window {
         }
         self.set_icon(hicon);
     }
+
+    pub fn shutdown(&self) {
+        unsafe {
+            let mut nid = get_nid_struct(&self.info.hwnd);
+            nid.uFlags = winapi::NIF_ICON;
+            println!("Setting icon! {}", shell32::Shell_NotifyIconW(winapi::NIM_DELETE,
+                                                                    &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW));
+        }
+    }
+}
+
+impl Drop for Window {
+    fn drop(&mut self) {
+        self.shutdown();
+    }
 }
