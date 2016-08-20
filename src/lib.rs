@@ -1,6 +1,5 @@
 // Systray Lib
 
-#![feature(unboxed_closures)]
 #[cfg(target_os = "windows")]
 extern crate winapi;
 #[cfg(target_os = "windows")]
@@ -40,9 +39,9 @@ impl Application {
     }
 }
 
-type Callback = Box<(Fn<(),Output=()> + 'static)>;
+type Callback = Box<(Fn(&api::api::Window) -> () + 'static)>;
 
 fn make_callback<F>(f: F) -> Callback
-    where F: std::ops::Fn<(),Output=()> + 'static {
+    where F: std::ops::Fn(&api::api::Window) -> () + 'static {
     Box::new(f) as Callback
 }

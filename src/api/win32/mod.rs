@@ -274,15 +274,13 @@ impl Window {
         Ok(w)
     }
 
-    pub fn quit(&mut self) {
+    pub fn quit(&self) {
         unsafe {
             user32::PostMessageW(self.info.hwnd, winapi::WM_DESTROY,
                                  0 as WPARAM, 0 as LPARAM);
         }
-        if let Some(t) = self.windows_loop.take() {
-            t.join().ok();
-        }
     }
+
 
     pub fn set_tooltip(&self, tooltip: &String) {
         // Add Tooltip
@@ -329,7 +327,7 @@ impl Window {
     }
 
     pub fn add_menu_item<F>(&mut self, item_name: &String, f: F)
-        where F: std::ops::Fn<(),Output=()> + 'static {
+        where F: std::ops::Fn(&Window) -> () + 'static {
         let idx = self.add_menu_entry(item_name);
         self.callback.insert(idx, make_callback(f));
     }
@@ -346,14 +344,20 @@ impl Window {
 
     pub fn wait_for_message(&mut self) {
         loop {
-            let msg = self.rx.recv().unwrap();
-            println!("Got {}", msg.menu_index);
-            if msg.menu_index == 0 {
-                self.quit();
-                return;
+            let msg;
+            match self.rx.recv() {
+                Ok(m) => msg = m,
+                Err(e) => {
+                    // If self.rx fails, we're in thread shutdown. Join here.
+                    if let Some(t) = self.windows_loop.take() {
+                        t.join().ok();
+                    }
+                    break;
+                }
             }
             if self.callback.contains_key(&msg.menu_index) {
-                self.callback.get(&msg.menu_index).map(|fun| fun());
+                let f = self.callback.get(&msg.menu_index).unwrap();
+                f(self);
             }
         }
     }
