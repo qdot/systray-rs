@@ -92,37 +92,48 @@ unsafe extern "system" fn window_proc(h_wnd :HWND,
     }
     return user32::DefWindowProcW(h_wnd, msg, w_param, l_param);
 }
-// Would be nice to have default for the notify icon struct, since there's a lot
-// of setup code otherwise. To get around orphan trait error, define trait here.
-trait Default {
-    fn default() -> Self;
+
+fn get_nid_struct(hwnd : &HWND) -> winapi::shellapi::NOTIFYICONDATAW {
+    winapi::shellapi::NOTIFYICONDATAW {
+        cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAW>() as DWORD,
+        hWnd: *hwnd,
+        uID: 0x1 as UINT,
+        uFlags: 0 as UINT,
+        uCallbackMessage: 0 as UINT,
+        hIcon: 0 as HICON,
+        szTip: [0 as u16; 128],
+        dwState: 0 as DWORD,
+        dwStateMask: 0 as DWORD,
+        szInfo: [0 as u16; 256],
+        uTimeout: 0 as UINT,
+        szInfoTitle: [0 as u16; 64],
+        dwInfoFlags: 0 as UINT,
+        guidItem: winapi::GUID {
+            Data1: 0 as winapi::c_ulong,
+            Data2: 0 as winapi::c_ushort,
+            Data3: 0 as winapi::c_ushort,
+            Data4: [0; 8]
+        },
+        hBalloonIcon: 0 as HICON
+    }
 }
 
-impl Default for winapi::shellapi::NOTIFYICONDATAA {
-    fn default() -> winapi::shellapi::NOTIFYICONDATAA {
-        winapi::shellapi::NOTIFYICONDATAA {
-            cbSize: std::mem::size_of::<winapi::shellapi::NOTIFYICONDATAA>() as DWORD,
-            hWnd: 0 as HWND,
-            uID: 0x1 as UINT,
-            uFlags: 0 as UINT,
-            uCallbackMessage: 0 as UINT,
-            hIcon: 0 as HICON,
-            szTip: [0 as i8; 128],
-            dwState: 0 as DWORD,
-            dwStateMask: 0 as DWORD,
-            szInfo: [0 as i8; 256],
-            uTimeout: 0 as UINT,
-            szInfoTitle: [0 as i8; 64],
-            dwInfoFlags: 0 as UINT,
-            guidItem: winapi::GUID {
-                Data1: 0 as winapi::c_ulong,
-                Data2: 0 as winapi::c_ushort,
-                Data3: 0 as winapi::c_ushort,
-                Data4: [0; 8]
-            },
-            hBalloonIcon: 0 as HICON
-        }
+fn get_menu_item_struct() -> winapi::MENUITEMINFOW {
+    winapi::MENUITEMINFOW {
+        cbSize: std::mem::size_of::<winapi::MENUITEMINFOW>() as UINT,
+        fMask: 0 as UINT,
+        fType: 0 as UINT,
+        fState: 0 as UINT,
+        wID: 0 as UINT,
+        hSubMenu: 0 as HMENU,
+        hbmpChecked: 0 as HBITMAP,
+        hbmpUnchecked: 0 as HBITMAP,
+        dwItemData: 0 as winapi::ULONG_PTR,
+        dwTypeData: std::ptr::null_mut(),
+        cch: 0 as u32,
+        hbmpItem: 0 as HBITMAP
     }
+
 }
 
 unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
@@ -157,13 +168,12 @@ unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
                                        std::ptr::null_mut());
     println!("Got window! {:?}", hwnd as u32);
     println!("Error? {}", kernel32::GetLastError());
-    let mut nid = winapi::shellapi::NOTIFYICONDATAA::default();
-    nid.hWnd = hwnd;
+    let mut nid = get_nid_struct(&hwnd);
     nid.uID = 0x1;
     nid.uFlags = winapi::NIF_MESSAGE;
     nid.uCallbackMessage = winapi::WM_USER + 1;
-    println!("Adding icon! {}", shell32::Shell_NotifyIconA(winapi::NIM_ADD,
-                                                           &mut nid as *mut winapi::shellapi::NOTIFYICONDATAA));
+    println!("Adding icon! {}", shell32::Shell_NotifyIconW(winapi::NIM_ADD,
+                                                           &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW));
     // Setup menu
     let hmenu = user32::CreatePopupMenu();
     let m = winapi::MENUINFO {
@@ -279,58 +289,40 @@ impl Window {
         // Gross way to convert String to [i8; 128]
         // TODO: Clean up conversion, test for length so we don't panic at runtime
         let tt = tooltip.as_bytes().clone();
-        let mut nid = winapi::shellapi::NOTIFYICONDATAA::default();
-        nid.hWnd = self.info.hwnd;
+        let mut nid = get_nid_struct(&self.info.hwnd);
         for i in 0..tt.len() {
-            nid.szTip[i] = tt[i] as i8;
+            nid.szTip[i] = tt[i] as u16;
         }
         nid.uFlags = winapi::NIF_TIP;
         unsafe {
-            println!("Setting tip! {}", shell32::Shell_NotifyIconA(winapi::NIM_MODIFY,
-                                                                   &mut nid as *mut winapi::shellapi::NOTIFYICONDATAA));
+            println!("Setting tip! {}", shell32::Shell_NotifyIconW(winapi::NIM_MODIFY,
+                                                                   &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW));
         }
     }
 
-    fn add_menu_entry(&mut self, item_name: &String) {
+    fn add_menu_entry(&mut self, item_name: &String) -> u32 {
         let mut st = to_wstring(item_name);
         let idx = self.menu_idx;
         self.menu_idx += 1;
-        let item = winapi::MENUITEMINFOW {
-            cbSize: std::mem::size_of::<winapi::MENUITEMINFOW>() as UINT,
-            fMask: (winapi::MIIM_FTYPE | winapi::MIIM_STRING | winapi::MIIM_ID | winapi::MIIM_STATE),
-            fType: winapi::MFT_STRING,
-            fState: 0 as UINT,
-            wID: idx as UINT,
-            hSubMenu: 0 as HMENU,
-            hbmpChecked: 0 as HBITMAP,
-            hbmpUnchecked: 0 as HBITMAP,
-            dwItemData: 0 as winapi::ULONG_PTR,
-            dwTypeData: st.as_mut_ptr(),
-            cch: (item_name.len() * 2) as u32, // 16 bit characters
-            hbmpItem: 0 as HBITMAP
-        };
+        let mut item = get_menu_item_struct();
+        item.fMask = winapi::MIIM_FTYPE | winapi::MIIM_STRING | winapi::MIIM_ID | winapi::MIIM_STATE;
+        item.fType = winapi::MFT_STRING;
+        item.wID = idx;
+        item.dwTypeData = st.as_mut_ptr();
+        item.cch = (item_name.len() * 2) as u32;
         unsafe {
             user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
         }
+        idx
     }
 
     pub fn add_menu_separator(&mut self) {
         let idx = self.menu_idx;
         self.menu_idx += 1;
-        let item = winapi::MENUITEMINFOW {
-            cbSize: std::mem::size_of::<winapi::MENUITEMINFOW>() as UINT,
-            fMask: winapi::MIIM_FTYPE,
-            fType: winapi::MFT_SEPARATOR,
-            fState: 0 as UINT,
-            wID: idx as UINT,
-            hSubMenu: 0 as HMENU,
-            hbmpChecked: 0 as HBITMAP,
-            hbmpUnchecked: 0 as HBITMAP,
-            dwItemData: 0 as winapi::ULONG_PTR,
-            dwTypeData: std::ptr::null_mut(),
-            cch: 0 as u32, // 16 bit characters
-            hbmpItem: 0 as HBITMAP
-        };
+        let mut item = get_menu_item_struct();
+        item.fMask = winapi::MIIM_FTYPE;
+        item.fType = winapi::MFT_SEPARATOR;
+        item.wID = idx;
         unsafe {
             user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
         }
@@ -338,37 +330,17 @@ impl Window {
 
     pub fn add_menu_item<F>(&mut self, item_name: &String, f: F)
         where F: std::ops::Fn<(),Output=()> + 'static {
-        let mut st = to_wstring(item_name);
-        let idx = self.menu_idx;
-        self.menu_idx += 1;
-        let item = winapi::MENUITEMINFOW {
-            cbSize: std::mem::size_of::<winapi::MENUITEMINFOW>() as UINT,
-            fMask: (winapi::MIIM_FTYPE | winapi::MIIM_STRING | winapi::MIIM_ID | winapi::MIIM_STATE),
-            fType: winapi::MFT_STRING,
-            fState: 0 as UINT,
-            wID: idx as UINT,
-            hSubMenu: 0 as HMENU,
-            hbmpChecked: 0 as HBITMAP,
-            hbmpUnchecked: 0 as HBITMAP,
-            dwItemData: 0 as winapi::ULONG_PTR,
-            dwTypeData: st.as_mut_ptr(),
-            cch: (item_name.len() * 2) as u32, // 16 bit characters
-            hbmpItem: 0 as HBITMAP
-        };
-        unsafe {
-            user32::InsertMenuItemW(self.info.hmenu, 0, 1, &item as *const winapi::MENUITEMINFOW);
-        }
+        let idx = self.add_menu_entry(item_name);
         self.callback.insert(idx, make_callback(f));
     }
 
     fn set_icon(&self, icon: HICON) {
         unsafe {
-            let mut nid = winapi::shellapi::NOTIFYICONDATAA::default();
-            nid.hWnd = self.info.hwnd;
+            let mut nid = get_nid_struct(&self.info.hwnd);
             nid.uFlags = winapi::NIF_ICON;
             nid.hIcon = icon;
-            println!("Setting icon! {}", shell32::Shell_NotifyIconA(winapi::NIM_MODIFY,
-                                                                    &mut nid as *mut winapi::shellapi::NOTIFYICONDATAA));
+            println!("Setting icon! {}", shell32::Shell_NotifyIconW(winapi::NIM_MODIFY,
+                                                                    &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW));
         }
     }
 
