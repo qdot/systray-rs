@@ -39,6 +39,10 @@ struct WindowsLoopData {
     pub tx: Sender<SystrayEvent>
 }
 
+unsafe fn get_win_os_error(msg: &str) -> SystrayError {
+    SystrayError::OsError(format!("{}: {}", &msg, kernel32::GetLastError()))
+}
+
 unsafe extern "system" fn window_proc(h_wnd :HWND,
 	                                    msg :UINT,
                                       w_param :WPARAM,
@@ -133,7 +137,6 @@ fn get_menu_item_struct() -> winapi::MENUITEMINFOW {
         cch: 0 as u32,
         hbmpItem: 0 as HBITMAP
     }
-
 }
 
 unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
@@ -153,7 +156,9 @@ unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
         lpszMenuName: 0 as LPCWSTR,
         lpszClassName: class_name.as_ptr(),
     };
-    user32::RegisterClassW(&wnd);
+    if user32::RegisterClassW(&wnd) == 0 {
+        return Err(get_win_os_error("Error creating window class"));
+    }
     let hwnd = user32::CreateWindowExW(0,
                                        class_name.as_ptr(),
                                        to_wstring("rust_systray_window").as_ptr(),
@@ -166,14 +171,17 @@ unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
                                        0 as HMENU,
                                        0 as HINSTANCE,
                                        std::ptr::null_mut());
-    println!("Got window! {:?}", hwnd as u32);
-    println!("Error? {}", kernel32::GetLastError());
+    if hwnd == std::ptr::null_mut() {
+        return Err(get_win_os_error("Error creating window"));
+    }
     let mut nid = get_nid_struct(&hwnd);
     nid.uID = 0x1;
     nid.uFlags = winapi::NIF_MESSAGE;
     nid.uCallbackMessage = winapi::WM_USER + 1;
-    println!("Adding icon! {}", shell32::Shell_NotifyIconW(winapi::NIM_ADD,
-                                                           &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW));
+    if shell32::Shell_NotifyIconW(winapi::NIM_ADD,
+                                  &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW) == 0 {
+        return Err(get_win_os_error("Error adding menu icon"));
+    }
     // Setup menu
     let hmenu = user32::CreatePopupMenu();
     let m = winapi::MENUINFO {
@@ -185,7 +193,9 @@ unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
         dwContextHelpID: 0 as DWORD,
         dwMenuData: 0 as winapi::ULONG_PTR
     };
-    println!("Created menu! {}", user32::SetMenuInfo(hmenu, &m as *const winapi::MENUINFO));
+    if user32::SetMenuInfo(hmenu, &m as *const winapi::MENUINFO) == 0 {
+        return Err(get_win_os_error("Error setting up menu"));
+    }
 
     Ok(WindowInfo {
         hwnd: hwnd,
@@ -195,6 +205,7 @@ unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
 }
 
 unsafe fn run_loop() {
+    debug!("Running windows loop");
     // Run message loop
     let mut msg = winapi::winuser::MSG {
         hwnd: 0 as HWND,
@@ -205,16 +216,14 @@ unsafe fn run_loop() {
         pt: winapi::windef::POINT { x: 0, y: 0, },
     };
     loop {
-        println!("RUNNING LOOP");
         user32::GetMessageW(&mut msg, 0 as HWND, 0, 0);
         if msg.message == winapi::winuser::WM_QUIT {
-            println!("QUITTING LOOP");
             break;
         }
-        println!("{}", msg.message);
         user32::TranslateMessage(&mut msg);
         user32::DispatchMessageW(&mut msg);
     }
+    debug!("Leaving windows run loop");
 }
 
 pub struct Window {
@@ -257,7 +266,7 @@ impl Window {
         let info = match rx.recv().unwrap() {
             Ok(i) => i,
             Err(e) => {
-                panic!(e);
+                return Err(e);
             }
         };
         let w = Window {
@@ -278,8 +287,9 @@ impl Window {
     }
 
 
-    pub fn set_tooltip(&self, tooltip: &String) {
+    pub fn set_tooltip(&self, tooltip: &String) -> Result<(), SystrayError> {
         // Add Tooltip
+        debug!("Setting tooltip to {}", tooltip);
         // Gross way to convert String to [i8; 128]
         // TODO: Clean up conversion, test for length so we don't panic at runtime
         let tt = tooltip.as_bytes().clone();
@@ -289,12 +299,15 @@ impl Window {
         }
         nid.uFlags = winapi::NIF_TIP;
         unsafe {
-            println!("Setting tip! {}", shell32::Shell_NotifyIconW(winapi::NIM_MODIFY,
-                                                                   &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW));
+            if shell32::Shell_NotifyIconW(winapi::NIM_MODIFY,
+                                          &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW) == 0 {
+                return Err(get_win_os_error("Error setting tooltip"));
+            }
         }
+        Ok(())
     }
 
-    fn add_menu_entry(&self, item_name: &String) -> u32 {
+    fn add_menu_entry(&self, item_name: &String) -> Result<u32, SystrayError> {
         let mut st = to_wstring(item_name);
         let idx = self.menu_idx.get();
         self.menu_idx.set(idx + 1);
@@ -305,12 +318,17 @@ impl Window {
         item.dwTypeData = st.as_mut_ptr();
         item.cch = (item_name.len() * 2) as u32;
         unsafe {
-            user32::InsertMenuItemW(self.info.hmenu, idx, 1, &item as *const winapi::MENUITEMINFOW);
+            if user32::InsertMenuItemW(self.info.hmenu,
+                                       idx,
+                                       1,
+                                       &item as *const winapi::MENUITEMINFOW) == 0 {
+                return Err(get_win_os_error("Error inserting menu item"));
+            }
         }
-        idx
+        Ok(idx)
     }
 
-    pub fn add_menu_separator(&self) {
+    pub fn add_menu_separator(&self) -> Result<u32, SystrayError> {
         let idx = self.menu_idx.get();
         self.menu_idx.set(idx + 1);
         let mut item = get_menu_item_struct();
@@ -318,25 +336,40 @@ impl Window {
         item.fType = winapi::MFT_SEPARATOR;
         item.wID = idx;
         unsafe {
-            user32::InsertMenuItemW(self.info.hmenu, idx, 1, &item as *const winapi::MENUITEMINFOW);
+            if user32::InsertMenuItemW(self.info.hmenu,
+                                       idx,
+                                       1,
+                                       &item as *const winapi::MENUITEMINFOW) == 0 {
+                return Err(get_win_os_error("Error inserting separator"));
+            }
         }
+        Ok(idx)
     }
 
-    pub fn add_menu_item<F>(&self, item_name: &String, f: F)
+    pub fn add_menu_item<F>(&self, item_name: &String, f: F) -> Result<u32, SystrayError>
         where F: std::ops::Fn(&Window) -> () + 'static {
-        let idx = self.add_menu_entry(item_name);
+        let idx = match self.add_menu_entry(item_name) {
+            Ok(i) => i,
+            Err(e) => {
+                return Err(e);
+            }
+        };
         let mut m = self.callback.borrow_mut();
         m.insert(idx, make_callback(f));
+        Ok(idx)
     }
 
-    fn set_icon(&self, icon: HICON) {
+    fn set_icon(&self, icon: HICON) -> Result<(), SystrayError> {
         unsafe {
             let mut nid = get_nid_struct(&self.info.hwnd);
             nid.uFlags = winapi::NIF_ICON;
             nid.hIcon = icon;
-            println!("Setting icon! {}", shell32::Shell_NotifyIconW(winapi::NIM_MODIFY,
-                                                                    &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW));
+            if shell32::Shell_NotifyIconW(winapi::NIM_MODIFY,
+                                          &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW) == 0 {
+                return Err(get_win_os_error("Error setting icon"));
+            }
         }
+        Ok(())
     }
 
     pub fn wait_for_message(&mut self) {
@@ -344,7 +377,7 @@ impl Window {
             let msg;
             match self.rx.recv() {
                 Ok(m) => msg = m,
-                Err(e) => {
+                Err(_) => {
                     // If self.rx fails, we're in thread shutdown. Join here.
                     if let Some(t) = self.windows_loop.take() {
                         t.join().ok();
@@ -360,7 +393,7 @@ impl Window {
         }
     }
 
-    pub fn set_icon_from_resource(&self, resource_name: &String) {
+    pub fn set_icon_from_resource(&self, resource_name: &String) -> Result<(), SystrayError> {
         let icon;
         unsafe {
             icon = user32::LoadImageW(self.info.hinstance,
@@ -369,36 +402,41 @@ impl Window {
                                       64,
                                       64,
                                       0) as HICON;
+            if icon == std::ptr::null_mut() as HICON {
+                return Err(get_win_os_error("Error setting icon from resource"));
+            }
         }
-        self.set_icon(icon);
+        self.set_icon(icon)
     }
 
-    pub fn set_icon_from_file(&self, icon_file: &String) {
+    pub fn set_icon_from_file(&self, icon_file: &String) -> Result<(), SystrayError> {
         let wstr_icon_file = to_wstring(&icon_file);
         let hicon;
         unsafe {
             hicon = user32::LoadImageW(std::ptr::null_mut() as HINSTANCE, wstr_icon_file.as_ptr(),
                                        winapi::IMAGE_ICON, 64, 64, winapi::LR_LOADFROMFILE) as HICON;
+            if hicon == std::ptr::null_mut() as HICON {
+                return Err(get_win_os_error("Error setting icon from file"));
+            }
         }
-        if hicon == std::ptr::null_mut() as HICON {
-            // TODO Throw Error
-            return;
-        }
-        self.set_icon(hicon);
+        self.set_icon(hicon)
     }
 
-    pub fn shutdown(&self) {
+    pub fn shutdown(&self) -> Result<(), SystrayError> {
         unsafe {
             let mut nid = get_nid_struct(&self.info.hwnd);
             nid.uFlags = winapi::NIF_ICON;
-            println!("Setting icon! {}", shell32::Shell_NotifyIconW(winapi::NIM_DELETE,
-                                                                    &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW));
+            if shell32::Shell_NotifyIconW(winapi::NIM_DELETE,
+                                          &mut nid as *mut winapi::shellapi::NOTIFYICONDATAW) == 0 {
+                return Err(get_win_os_error("Error deleting icon from menu"));
+            }
         }
+        Ok(())
     }
 }
 
 impl Drop for Window {
     fn drop(&mut self) {
-        self.shutdown();
+        self.shutdown().ok();
     }
 }

@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Kyle Machulis <kyle@machul.is>"]
 build = "build.rs"
 
+[dependencies]
+log="*"
+
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi={ path = "../winapi-rs/" }
 user32-sys={ path = "../winapi-rs/lib/user32/" }
