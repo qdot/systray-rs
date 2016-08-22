@@ -1,5 +1,7 @@
 # systray-rs
 
+[![Build Status](https://travis-ci.org/qdot/systray-rs.svg?branch=master)](https://travis-ci.org/qdot/systray-rs) [![Build status](https://ci.appveyor.com/api/projects/status/lhqm3lucb5w5559b?svg=true)](https://ci.appveyor.com/project/qdot/systray-rs)
+
 systray-rs is a Rust library that makes it easy for applications to
 have minimal UI in a platform specific way. It wraps the platform
 specific calls required to show an icon in the system tray, as well as
