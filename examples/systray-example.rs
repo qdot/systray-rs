@@ -1,5 +1,6 @@
 extern crate systray;
 
+#[cfg(target_os = "windows")]
 fn main() {
     let mut app;
     match systray::Application::new() {
@@ -24,4 +25,9 @@ fn main() {
     });
     println!("Waiting on message!");
     w.wait_for_message();
+}
+
+#[cfg(not(target_os = "windows"))]
+fn main() {
+    panic!("Not implemented on this platform!");
 }

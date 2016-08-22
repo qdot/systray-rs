@@ -2,7 +2,7 @@
 name = "systray"
 version = "0.1.0"
 authors = ["Kyle Machulis <kyle@machul.is>"]
-build = "build.rs"
+# build = "build.rs"
 
 [dependencies]
 log="*"

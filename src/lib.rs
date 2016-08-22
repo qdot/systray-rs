@@ -18,6 +18,7 @@ pub mod api;
 #[derive(Clone)]
 pub enum SystrayError {
     OsError(String),
+    NotImplementedError,
     UnknownError,
 }
 
