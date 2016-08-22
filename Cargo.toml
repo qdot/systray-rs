@@ -17,5 +17,5 @@ libc="*"
 [target.'cfg(target_os = "darwin")'.dependencies]
 cocoa="*"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-gdk="*"
+# [target.'cfg(target_os = "linux")'.dependencies]
+# gdk="*"
