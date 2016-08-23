@@ -6,6 +6,6 @@ pub mod api;
 #[path="linux/mod.rs"]
 pub mod api;
 
-#[cfg(target_os = "darwin")]
+#[cfg(target_os = "macos")]
 #[path="cocoa/mod.rs"]
 pub mod api;

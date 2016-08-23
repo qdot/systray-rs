@@ -13,8 +13,10 @@ kernel32-sys={ path = "../winapi-rs/lib/kernel32/" }
 shell32-sys={ path = "../winapi-rs/lib/shell32/" }
 libc="*"
 
-[target.'cfg(target_os = "darwin")'.dependencies]
+[target.'cfg(target_os = "macos")'.dependencies]
+objc="*"
 cocoa="*"
+core-foundation="*"
 
 # [target.'cfg(target_os = "linux")'.dependencies]
 # gdk="*"
