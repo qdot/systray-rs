@@ -4,19 +4,17 @@ version = "0.1.0"
 authors = ["Kyle Machulis <kyle@machul.is>"]
 
 [dependencies]
-log="*"
+log = "*"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winapi={ path = "../winapi-rs/" }
-user32-sys={ path = "../winapi-rs/lib/user32/" }
-kernel32-sys={ path = "../winapi-rs/lib/kernel32/" }
-shell32-sys={ path = "../winapi-rs/lib/shell32/" }
-libc="*"
+kernel32-sys = { git = "https://github.com/application-developer-DA/winapi-rs.git", branch = "0.2" }
+shell32-sys = { git = "https://github.com/application-developer-DA/winapi-rs.git", branch = "0.2" }
+user32-sys = { git = "https://github.com/application-developer-DA/winapi-rs.git", branch = "0.2" }
+winapi = { git = "https://github.com/application-developer-DA/winapi-rs.git", branch = "0.2" }
+
+libc = "*"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc="*"
-cocoa="*"
-core-foundation="*"
-
-# [target.'cfg(target_os = "linux")'.dependencies]
-# gdk="*"
+objc = "*"
+cocoa = "*"
+core-foundation = "*"
