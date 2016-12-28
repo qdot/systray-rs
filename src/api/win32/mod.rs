@@ -12,8 +12,8 @@ use kernel32;
 use shell32;
 use winapi::windef::{HWND, HMENU, HICON, HBRUSH, HBITMAP};
 use winapi::winnt::{LPCWSTR};
-use winapi::minwindef::{UINT, DWORD, WPARAM, LPARAM, LRESULT, HINSTANCE};
-use winapi::winuser::{WNDCLASSW, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT};
+use winapi::minwindef::{UINT, DWORD, WPARAM, LPARAM, LRESULT, HINSTANCE, TRUE, PBYTE};
+use winapi::winuser::{WNDCLASSW, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, LR_DEFAULTCOLOR};
 
 fn to_wstring(str : &str) -> Vec<u16> {
     OsStr::new(str).encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>()
@@ -420,6 +420,41 @@ impl Window {
             }
         }
         self.set_icon(hicon)
+    }
+
+    pub fn set_icon_from_buffer(&self, buffer: &[u8], width: u32, height: u32) -> Result<(), SystrayError> {
+        let offset = unsafe {
+            user32::LookupIconIdFromDirectoryEx(
+                buffer.as_ptr() as PBYTE,
+                TRUE,
+                width as i32,
+                height as i32,
+                LR_DEFAULTCOLOR
+            )
+        };
+
+        if offset != 0 {
+            let icon_data = &buffer[offset as usize ..];
+            let hicon = unsafe {
+                user32::CreateIconFromResourceEx(
+                    icon_data.as_ptr() as PBYTE,
+                    0,
+                    TRUE,
+                    0x30000,
+                    width as i32,
+                    height as i32,
+                    LR_DEFAULTCOLOR
+                )
+            };
+
+            if hicon == std::ptr::null_mut() as HICON {
+                return Err( unsafe { get_win_os_error("Cannot load icon from the buffer") } );
+            }
+
+            self.set_icon(hicon)
+        } else {
+            Err( unsafe { get_win_os_error("Error setting icon from buffer") })
+        }
     }
 
     pub fn shutdown(&self) -> Result<(), SystrayError> {
