@@ -15,7 +15,7 @@ extern crate libc;
 
 pub mod api;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum SystrayError {
     OsError(String),
     NotImplementedError,
