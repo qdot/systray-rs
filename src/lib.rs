@@ -27,6 +27,16 @@ pub struct SystrayEvent {
     menu_checked: bool
 }
 
+impl std::fmt::Display for SystrayError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match self {
+            &SystrayError::OsError(ref err_str) => write!(f, "OsError: {}", err_str),
+            &SystrayError::NotImplementedError => write!(f, "Functionality is not implemented yet"),
+            &SystrayError::UnknownError => write!(f, "Unknown error occurrred"),
+        }
+    }
+}
+
 pub struct Application {
     pub window: api::api::Window
 }
