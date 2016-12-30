@@ -24,7 +24,6 @@ pub enum SystrayError {
 
 pub struct SystrayEvent {
     menu_index: u32,
-    menu_checked: bool
 }
 
 impl std::fmt::Display for SystrayError {

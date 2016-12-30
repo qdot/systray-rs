@@ -58,7 +58,6 @@ unsafe extern "system" fn window_proc(h_wnd :HWND,
                 if menu_id != -1 {
                     stash.tx.send(SystrayEvent {
                         menu_index: menu_id as u32,
-                        menu_checked: false
                     }).ok();
                 }
             }
