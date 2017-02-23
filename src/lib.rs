@@ -9,8 +9,6 @@ extern crate kernel32;
 #[cfg(target_os = "windows")]
 extern crate user32;
 #[cfg(target_os = "windows")]
-extern crate shell32;
-#[cfg(target_os = "windows")]
 extern crate libc;
 
 pub mod api;

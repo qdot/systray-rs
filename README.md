@@ -12,6 +12,11 @@ systray-rs is heavily influenced by
 
 # License
 
+systray-rs includes some code
+from [winapi-rs, by retep998](https://github.com/retep998/winapi-rs).
+This code is covered under the MIT license. This code will be removed
+once winapi-rs has a 0.3 crate available.
+
 systray-rs is BSD licensed.
 
     Copyright (c) 2016, Kyle Machulis

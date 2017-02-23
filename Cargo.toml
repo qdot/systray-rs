@@ -7,10 +7,9 @@ authors = ["Kyle Machulis <kyle@machul.is>"]
 log="*"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winapi={ path = "winapi-rs/" }
-user32-sys={ path = "winapi-rs/lib/user32/" }
-kernel32-sys={ path = "winapi-rs/lib/kernel32/" }
-shell32-sys={ path = "winapi-rs/lib/shell32/" }
+winapi="0.2"
+user32-sys="0.2"
+kernel32-sys="0.2"
 libc="*"
 
 [target.'cfg(target_os = "macos")'.dependencies]
