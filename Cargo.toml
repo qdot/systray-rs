@@ -10,18 +10,18 @@ readme = "README.md"
 keywords = ["gui"]
 
 [dependencies]
-log="*"
+log="0.3"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi="0.2"
 user32-sys="0.2"
 kernel32-sys="0.2"
-libc="*"
+libc="0.2"
 
-[target.'cfg(target_os = "macos")'.dependencies]
-objc="*"
-cocoa="*"
-core-foundation="*"
+# [target.'cfg(target_os = "macos")'.dependencies]
+# objc="*"
+# cocoa="*"
+# core-foundation="*"
 
 # [target.'cfg(target_os = "linux")'.dependencies]
 # gdk="*"
