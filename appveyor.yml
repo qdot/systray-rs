@@ -12,7 +12,6 @@ install:
   - rustc -vV
   - cargo -vV
   - erase rust-install.exe
-  - git clone https://github.com/qdot/winapi-rs -b menu-api c:\projects\winapi-rs
 build_script:
   - cargo build
   # Skip packaging step while we're running off a local winapi build

@@ -16,7 +16,6 @@ addons:
       - libgtk-3-dev
 
 script:
-  - git clone https://github.com/qdot/winapi-rs -b menu-api winapi-rs
   - PKG_CONFIG_PATH=$HOME/local/lib/pkgconfig LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH cargo build --verbose
   - PKG_CONFIG_PATH=$HOME/local/lib/pkgconfig LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH cargo test --verbose
 
