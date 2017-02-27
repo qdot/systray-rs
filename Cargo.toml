@@ -22,6 +22,3 @@ libc="0.2"
 # objc="*"
 # cocoa="*"
 # core-foundation="*"
-
-# [target.'cfg(target_os = "linux")'.dependencies]
-# gdk="*"

@@ -13,7 +13,7 @@ extern crate libc;
 
 pub mod api;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum SystrayError {
     OsError(String),
     NotImplementedError,
@@ -22,7 +22,16 @@ pub enum SystrayError {
 
 pub struct SystrayEvent {
     menu_index: u32,
-    menu_checked: bool
+}
+
+impl std::fmt::Display for SystrayError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match self {
+            &SystrayError::OsError(ref err_str) => write!(f, "OsError: {}", err_str),
+            &SystrayError::NotImplementedError => write!(f, "Functionality is not implemented yet"),
+            &SystrayError::UnknownError => write!(f, "Unknown error occurrred"),
+        }
+    }
 }
 
 pub struct Application {
