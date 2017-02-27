@@ -12,7 +12,7 @@ use user32;
 use kernel32;
 use winapi::windef::{HWND, HMENU, HICON, HBRUSH, HBITMAP};
 use winapi::winnt::{LPCWSTR};
-use winapi::minwindef::{UINT, DWORD, WPARAM, LPARAM, LRESULT, HINSTANCE, TRUE, PBYTE};
+use winapi::minwindef::{DWORD, WPARAM, LPARAM, LRESULT, HINSTANCE, TRUE, PBYTE};
 use winapi::winuser::{WNDCLASSW, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, LR_DEFAULTCOLOR};
 
 // Until winapi hits 0.3 on crates.io, add these so we can publish a crate.
