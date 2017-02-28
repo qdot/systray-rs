@@ -1,10 +1,10 @@
 use {SystrayEvent, SystrayError, Callback, make_callback};
 use std;
-use std::cell::{Cell, RefCell};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::os::windows::ffi::OsStrExt;
 use std::ffi::OsStr;
 use std::thread;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use winapi;
 use winapi::{MENUITEMINFOW, LPMENUITEMINFOA, LPMENUITEMINFOW, c_int, RECT, UINT, BOOL, ULONG_PTR, CHAR, GUID, WCHAR};
@@ -435,7 +435,6 @@ pub struct Window {
 impl Window {
     pub fn new() -> Result<Window, SystrayError> {
         let (tx, rx) = channel();
-        let (event_tx, event_rx) = channel();
         let windows_loop = thread::spawn(move || {
             unsafe {
                 let i = init_window();
@@ -481,6 +480,9 @@ impl Window {
         unsafe {
             user32::PostMessageW(self.info.hwnd, winapi::WM_DESTROY,
                                  0 as WPARAM, 0 as LPARAM);
+        }
+        if let Some(t) = self.windows_loop.take() {
+            t.join().ok();
         }
     }
 
