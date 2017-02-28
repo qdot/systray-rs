@@ -56,7 +56,7 @@ impl GtkSystrayApp {
 			  //         break;
 		    //     }
 	      // }
-        let m = gtk::MenuItem::new_with_label("test");
+        let m = gtk::MenuItem::new_with_label(item_name);
         self.menu.append(&m);
         self.menu.show_all();
         //self.menu_items.insert(self.menu_idx, m);
@@ -171,7 +171,10 @@ impl Window {
     }
 
     pub fn quit(&self) {
-        panic!("Not implemented on this platform!");
+        glib::idle_add(|| {
+            gtk::main_quit();
+            glib::Continue(false)
+        });
     }
 
 }
