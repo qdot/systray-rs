@@ -11,6 +11,9 @@ keywords = ["gui"]
 
 [dependencies]
 log="0.3"
+gtk="0.1"
+glib="0.1"
+libappindicator={ path= "../libappindicator-rs" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi="0.2"
