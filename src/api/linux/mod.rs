@@ -35,7 +35,7 @@ impl GtkSystrayApp {
             return Err(SystrayError::OsError(format!("{}", "Gtk init error!")));
         }
         let mut m = gtk::Menu::new();
-        let mut ai = AppIndicator::new("", "").unwrap();
+        let mut ai = AppIndicator::new("", "");
         ai.set_status(AppIndicatorStatus::APP_INDICATOR_STATUS_ACTIVE);
         ai.set_menu(&mut m);
         Ok(GtkSystrayApp {
