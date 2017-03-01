@@ -11,10 +11,13 @@ matrix:
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
       - build-essential
       - libgtk-3-dev
       - libappindicator3-dev
+      - gcc-5
 
 before_install: . ./ci/before_install.sh
 
