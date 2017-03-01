@@ -22,7 +22,7 @@ gtk= "0.8.1"
 glib= "0.9.3"
 libappindicator= "0.5.1"
 
-# [target.'cfg(target_os = "macos")'.dependencies]
-# objc="*"
-# cocoa="*"
-# core-foundation="*"
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "*"
+cocoa = "*"
+core-foundation = "*"
