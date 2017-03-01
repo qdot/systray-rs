@@ -1,5 +1,5 @@
 use gtk::{ self, Window as GTKWindow, WindowType, WidgetExt,
-           Inhibit, Widget, Menu, MenuShellExt };
+           Inhibit, Widget, Menu, MenuShellExt, MenuItemExt };
 use libappindicator::{AppIndicator,
                       AppIndicatorStatus};
 use std::cell::{RefCell};
@@ -14,7 +14,7 @@ use std::sync::mpsc::{channel, Sender};
 // base types involved don't implement Send (for good reason).
 pub struct GtkSystrayApp {
     menu: gtk::Menu,
-    ai: AppIndicator,
+    ai: RefCell<AppIndicator>,
     menu_items: RefCell<HashMap<u32, gtk::MenuItem>>,
     event_tx: Sender<SystrayEvent>
 }
@@ -27,72 +27,6 @@ pub struct MenuItemInfo {
     tooltip: String,
     disabled: bool,
     checked: bool
-}
-
-impl GtkSystrayApp {
-    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<GtkSystrayApp, SystrayError> {
-        if let Err(e) = gtk::init() {
-            return Err(SystrayError::OsError(format!("{}", "Gtk init error!")));
-        }
-        let mut m = gtk::Menu::new();
-        let mut ai = AppIndicator::new("", "");
-        ai.set_status(AppIndicatorStatus::APP_INDICATOR_STATUS_ACTIVE);
-        ai.set_menu(&mut m);
-        Ok(GtkSystrayApp {
-            menu: m,
-            ai: ai,
-            menu_items: RefCell::new(HashMap::new()),
-            event_tx: event_tx
-        })
-    }
-
-    pub fn add_menu_entry(&self, item_name: &String) {
-        // MenuItemInfo *mii = (MenuItemInfo*)data;
-	      // GList* it;
-	      // for(it = global_menu_items; it != NULL; it = it->next) {
-		    //     MenuItemNode* item = (MenuItemNode*)(it->data);
-		    //     if(item->menu_id == mii->menu_id){
-			  //         gtk_menu_item_set_label(GTK_MENU_ITEM(item->menu_item), mii->title);
-			  //         break;
-		    //     }
-	      // }
-        let m = gtk::MenuItem::new_with_label(item_name);
-        self.menu.append(&m);
-        self.menu.show_all();
-        //self.menu_items.insert(self.menu_idx, m);
-	      // // menu id doesn't exist, add new item
-	      // if(it == NULL) {
-		    //     GtkWidget *menu_item = gtk_menu_item_new_with_label(mii->title);
-		    //     int *id = malloc(sizeof(int));
-		    //     *id = mii->menu_id;
-		    //     g_signal_connect_swapped(G_OBJECT(menu_item), "activate", G_CALLBACK(_systray_menu_item_selected), id);
-		    //     gtk_menu_shell_append(GTK_MENU_SHELL(global_tray_menu), menu_item);
-
-		    //     MenuItemNode* new_item = malloc(sizeof(MenuItemNode));
-		    //     new_item->menu_id = mii->menu_id;
-		    //     new_item->menu_item = menu_item;
-		    //     GList* new_node = malloc(sizeof(GList));
-		    //     new_node->data = new_item;
-		    //     new_node->next = global_menu_items;
-		    //     if(global_menu_items != NULL) {
-			  //         global_menu_items->prev = new_node;
-		    //     }
-		    //     global_menu_items = new_node;
-		    //     it = new_node;
-	      // }
-	      // GtkWidget * menu_item = GTK_WIDGET(((MenuItemNode*)(it->data))->menu_item);
-	      // gtk_widget_set_sensitive(menu_item, mii->disabled == 1 ? FALSE : TRUE);
-	      // gtk_widget_show_all(global_tray_menu);
-
-	      // free(mii->title);
-	      // free(mii->tooltip);
-	      // free(mii);
-        // return FALSE;
-    }
-}
-
-pub struct Window {
-    gtk_loop: Option<thread::JoinHandle<()>>
 }
 
 type Callback = Box<(Fn(&GtkSystrayApp) -> () + 'static)>;
@@ -112,6 +46,58 @@ fn run_on_gtk_thread<F>(f: F)
         });
         gtk::Continue(false)
     });
+}
+
+impl GtkSystrayApp {
+    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<GtkSystrayApp, SystrayError> {
+        if let Err(e) = gtk::init() {
+            return Err(SystrayError::OsError(format!("{}", "Gtk init error!")));
+        }
+        let mut m = gtk::Menu::new();
+        let mut ai = AppIndicator::new("", "");
+        ai.set_status(AppIndicatorStatus::APP_INDICATOR_STATUS_ACTIVE);
+        ai.set_menu(&mut m);
+        Ok(GtkSystrayApp {
+            menu: m,
+            ai: RefCell::new(ai),
+            menu_items: RefCell::new(HashMap::new()),
+            event_tx: event_tx
+        })
+    }
+
+    pub fn systray_menu_selected(&self, menu_id: u32) {
+        self.event_tx.send(SystrayEvent {
+            menu_index: menu_id as u32,
+        }).ok();
+    }
+
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &String) {
+        let mut menu_items = self.menu_items.borrow_mut();
+        if menu_items.contains_key(&item_idx) {
+            let m : &gtk::MenuItem = menu_items.get(&item_idx).unwrap();
+            m.set_label(item_name);
+            self.menu.show_all();
+            return;
+        }
+        let m = gtk::MenuItem::new_with_label(item_name);
+        self.menu.append(&m);
+        m.connect_activate(move |_| {
+            run_on_gtk_thread(move |stash : &GtkSystrayApp| {
+                stash.systray_menu_selected(item_idx);
+            });
+        });
+        menu_items.insert(item_idx, m);
+        self.menu.show_all();
+    }
+
+    pub fn set_icon_from_file(&self, file: &String) {
+        let mut ai = self.ai.borrow_mut();
+        ai.set_icon_full(file, "icon");
+    }
+}
+
+pub struct Window {
+    gtk_loop: Option<thread::JoinHandle<()>>
 }
 
 impl Window {
@@ -142,20 +128,24 @@ impl Window {
         }
     }
 
-    pub fn add_menu_entry(&self, item_name: &String) -> Result<u32, SystrayError> {
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &String) -> Result<(), SystrayError> {
         let n = item_name.clone();
         run_on_gtk_thread(move |stash : &GtkSystrayApp| {
-            stash.add_menu_entry(&n);
+            stash.add_menu_entry(item_idx, &n);
         });
-        Ok(0)
+        Ok(())
     }
 
-    pub fn add_menu_seperator(&self) -> Result<u32, SystrayError> {
+    pub fn add_menu_seperator(&self, item_idx: u32) -> Result<(), SystrayError> {
         panic!("Not implemented on this platform!");
     }
 
-    pub fn set_icon_from_file(&self, file: &str) -> Result<(), SystrayError> {
-        panic!("Not implemented on this platform!");
+    pub fn set_icon_from_file(&self, file: &String) -> Result<(), SystrayError> {
+        let n : String = file.clone();
+        run_on_gtk_thread(move |stash : &GtkSystrayApp| {
+            stash.set_icon_from_file(&n);
+        });
+        Ok(())
     }
 
     pub fn set_icon_from_resource(&self, resource: &str) -> Result<(), SystrayError> {

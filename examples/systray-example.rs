@@ -9,6 +9,7 @@ fn main() {
     }
     // w.set_icon_from_file(&"C:\\Users\\qdot\\code\\git-projects\\systray-rs\\resources\\rust.ico".to_string());
     // w.set_tooltip(&"Whatever".to_string());
+    app.set_icon_from_file(&"/usr/share/gxkb/flags/ua.png".to_string());
     app.add_menu_item(&"Print a thing".to_string(), |window| {
         println!("Printing a thing!");
     });

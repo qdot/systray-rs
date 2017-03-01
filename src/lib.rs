@@ -46,8 +46,8 @@ impl std::fmt::Display for SystrayError {
 
 pub struct Application {
     window: api::api::Window,
-    menu_idx: Cell<u32>,
-    callback: RefCell<HashMap<u32, Callback>>,
+    menu_idx: u32,
+    callback: HashMap<u32, Callback>,
     // Each platform-specific window module will set up its own thread for
     // dealing with the OS main loop. Use this channel for receiving events from
     // that thread.
@@ -67,32 +67,35 @@ impl Application {
         match api::api::Window::new(event_tx) {
             Ok(w) => Ok(Application {
                 window: w,
-                menu_idx: Cell::new(0),
-                callback: RefCell::new(HashMap::new()),
+                menu_idx: 0,
+                callback: HashMap::new(),
                 rx: event_rx
             }),
             Err(e) => Err(e)
         }
     }
 
-    pub fn add_menu_item<F>(&self, item_name: &String, f: F) -> Result<u32, SystrayError>
+    pub fn add_menu_item<F>(&mut self, item_name: &String, f: F) -> Result<u32, SystrayError>
         where F: std::ops::Fn(&Application) -> () + 'static {
-        let idx = match self.window.add_menu_entry(item_name) {
-            Ok(i) => i,
-            Err(e) => {
-                return Err(e);
-            }
-        };
-        let mut m = self.callback.borrow_mut();
-        m.insert(idx, make_callback(f));
+        let idx = self.menu_idx;
+        if let Err(e) = self.window.add_menu_entry(idx, item_name) {
+            return Err(e);
+        }
+        self.callback.insert(idx, make_callback(f));
+        self.menu_idx += 1;
         Ok(idx)
     }
 
-    pub fn add_menu_seperator(&self) -> Result<u32, SystrayError> {
-        self.window.add_menu_seperator()
+    pub fn add_menu_seperator(&mut self) -> Result<u32, SystrayError> {
+        let idx = self.menu_idx;
+        if let Err(e) = self.window.add_menu_seperator(idx) {
+            return Err(e);
+        }
+        self.menu_idx += 1;
+        Ok(idx)
     }
 
-    pub fn set_icon_from_file(&self, file: &str) -> Result<(), SystrayError> {
+    pub fn set_icon_from_file(&self, file: &String) -> Result<(), SystrayError> {
         self.window.set_icon_from_file(file)
     }
 
@@ -122,10 +125,10 @@ impl Application {
                     break;
                 }
             }
-            if (*self.callback.borrow()).contains_key(&msg.menu_index) {
-                let f = (*self.callback.borrow_mut()).remove(&msg.menu_index).unwrap();
+            if self.callback.contains_key(&msg.menu_index) {
+                let f = self.callback.remove(&msg.menu_index).unwrap();
                 f(&self);
-                (*self.callback.borrow_mut()).insert(msg.menu_index, f);
+                self.callback.insert(msg.menu_index, f);
             }
         }
     }
