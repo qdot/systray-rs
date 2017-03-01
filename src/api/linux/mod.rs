@@ -71,6 +71,14 @@ impl GtkSystrayApp {
         }).ok();
     }
 
+    pub fn add_menu_separator(&self, item_idx: u32) {
+        //let mut menu_items = self.menu_items.borrow_mut();
+        let m = gtk::SeparatorMenuItem::new();
+        self.menu.append(&m);
+        //menu_items.insert(item_idx, m);
+        self.menu.show_all();
+    }
+
     pub fn add_menu_entry(&self, item_idx: u32, item_name: &String) {
         let mut menu_items = self.menu_items.borrow_mut();
         if menu_items.contains_key(&item_idx) {
@@ -136,8 +144,11 @@ impl Window {
         Ok(())
     }
 
-    pub fn add_menu_seperator(&self, item_idx: u32) -> Result<(), SystrayError> {
-        panic!("Not implemented on this platform!");
+    pub fn add_menu_separator(&self, item_idx: u32) -> Result<(), SystrayError> {
+        run_on_gtk_thread(move |stash : &GtkSystrayApp| {
+            stash.add_menu_separator(item_idx);
+        });
+        Ok(())
     }
 
     pub fn set_icon_from_file(&self, file: &String) -> Result<(), SystrayError> {

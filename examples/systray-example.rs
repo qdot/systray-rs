@@ -13,16 +13,16 @@ fn main() {
     app.add_menu_item(&"Print a thing".to_string(), |window| {
         println!("Printing a thing!");
     });
-    // w.add_menu_item(&"Add Menu Item".to_string(), |window| {
-    //     window.add_menu_item(&"Interior item".to_string(), |window| {
-    //         println!("what");
-    //     });
-    //     window.add_menu_separator();
-    // });
-    // w.add_menu_separator();
-    // w.add_menu_item(&"Quit".to_string(), |window| {
-    //     window.quit();
-    // });
+    app.add_menu_item(&"Add Menu Item".to_string(), |window| {
+        window.add_menu_item(&"Interior item".to_string(), |window| {
+            println!("what");
+        });
+        window.add_menu_separator();
+    });
+    app.add_menu_separator();
+    app.add_menu_item(&"Quit".to_string(), |window| {
+        window.quit();
+    });
     println!("Waiting on message!");
     app.wait_for_message();
 }

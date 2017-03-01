@@ -54,10 +54,10 @@ pub struct Application {
     rx: Receiver<SystrayEvent>,
 }
 
-type Callback = Box<(Fn(&Application) -> () + 'static)>;
+type Callback = Box<(Fn(&mut Application) -> () + 'static)>;
 
 fn make_callback<F>(f: F) -> Callback
-    where F: std::ops::Fn(&Application) -> () + 'static {
+    where F: std::ops::Fn(&mut Application) -> () + 'static {
     Box::new(f) as Callback
 }
 
@@ -76,7 +76,7 @@ impl Application {
     }
 
     pub fn add_menu_item<F>(&mut self, item_name: &String, f: F) -> Result<u32, SystrayError>
-        where F: std::ops::Fn(&Application) -> () + 'static {
+        where F: std::ops::Fn(&mut Application) -> () + 'static {
         let idx = self.menu_idx;
         if let Err(e) = self.window.add_menu_entry(idx, item_name) {
             return Err(e);
@@ -86,9 +86,9 @@ impl Application {
         Ok(idx)
     }
 
-    pub fn add_menu_seperator(&mut self) -> Result<u32, SystrayError> {
+    pub fn add_menu_separator(&mut self) -> Result<u32, SystrayError> {
         let idx = self.menu_idx;
-        if let Err(e) = self.window.add_menu_seperator(idx) {
+        if let Err(e) = self.window.add_menu_separator(idx) {
             return Err(e);
         }
         self.menu_idx += 1;
@@ -127,7 +127,7 @@ impl Application {
             }
             if self.callback.contains_key(&msg.menu_index) {
                 let f = self.callback.remove(&msg.menu_index).unwrap();
-                f(&self);
+                f(self);
                 self.callback.insert(msg.menu_index, f);
             }
         }
