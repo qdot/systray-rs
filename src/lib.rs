@@ -19,7 +19,6 @@ extern crate libappindicator;
 
 pub mod api;
 
-use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver};
 
@@ -99,7 +98,7 @@ impl Application {
         self.window.set_icon_from_file(file)
     }
 
-    pub fn set_icon_from_resource(&self, resource: &str) -> Result<(), SystrayError> {
+    pub fn set_icon_from_resource(&self, resource: &String) -> Result<(), SystrayError> {
         self.window.set_icon_from_resource(resource)
     }
 
@@ -107,11 +106,11 @@ impl Application {
         self.window.shutdown()
     }
 
-    pub fn set_tooltip(&self, tooltip: &str) -> Result<(), SystrayError> {
+    pub fn set_tooltip(&self, tooltip: &String) -> Result<(), SystrayError> {
         self.window.set_tooltip(tooltip)
     }
 
-    pub fn quit(&self) {
+    pub fn quit(&mut self) {
         self.window.quit()
     }
 

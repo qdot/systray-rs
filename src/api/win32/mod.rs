@@ -1,15 +1,14 @@
-use {SystrayEvent, SystrayError, Callback, make_callback};
 mod winapipatch;
 use self::winapipatch::*;
+use {SystrayEvent, SystrayError};
 use std;
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender};
 use std::os::windows::ffi::OsStrExt;
 use std::ffi::OsStr;
 use std::thread;
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::cell::RefCell;
 use winapi;
-use winapi::{MENUITEMINFOW, LPMENUITEMINFOA, LPMENUITEMINFOW, c_int, RECT, UINT, BOOL, ULONG_PTR, CHAR, GUID, WCHAR};
+use winapi::{MENUITEMINFOW, UINT};
 use user32;
 use kernel32;
 use winapi::windef::{HWND, HMENU, HICON, HBRUSH, HBITMAP};
@@ -231,13 +230,10 @@ unsafe fn run_loop() {
 pub struct Window {
     info: WindowInfo,
     windows_loop: Option<thread::JoinHandle<()>>,
-    menu_idx: Cell<u32>,
-    callback: RefCell<HashMap<u32, Callback>>,
-    pub rx: Receiver<SystrayEvent>,
 }
 
 impl Window {
-    pub fn new() -> Result<Window, SystrayError> {
+    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<Window, SystrayError> {
         let (tx, rx) = channel();
         let windows_loop = thread::spawn(move || {
             unsafe {
@@ -273,14 +269,11 @@ impl Window {
         let w = Window {
             info: info,
             windows_loop: Some(windows_loop),
-            rx: event_rx,
-            menu_idx: Cell::new(0),
-            callback: RefCell::new(HashMap::new())
         };
         Ok(w)
     }
 
-    pub fn quit(&self) {
+    pub fn quit(&mut self) {
         unsafe {
             user32::PostMessageW(self.info.hwnd, winapi::WM_DESTROY,
                                  0 as WPARAM, 0 as LPARAM);
@@ -311,56 +304,39 @@ impl Window {
         Ok(())
     }
 
-    fn add_menu_entry(&self, item_name: &String) -> Result<u32, SystrayError> {
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &String) -> Result<(), SystrayError> {
         let mut st = to_wstring(item_name);
-        let idx = self.menu_idx.get();
-        self.menu_idx.set(idx + 1);
         let mut item = get_menu_item_struct();
         item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE;
         item.fType = MFT_STRING;
-        item.wID = idx;
+        item.wID = item_idx;
         item.dwTypeData = st.as_mut_ptr();
         item.cch = (item_name.len() * 2) as u32;
         unsafe {
             if user32::InsertMenuItemW(self.info.hmenu,
-                                       idx,
+                                       item_idx,
                                        1,
                                        &item as *const winapi::MENUITEMINFOW) == 0 {
                 return Err(get_win_os_error("Error inserting menu item"));
             }
         }
-        Ok(idx)
+        Ok(())
     }
 
-    pub fn add_menu_separator(&self) -> Result<u32, SystrayError> {
-        let idx = self.menu_idx.get();
-        self.menu_idx.set(idx + 1);
+    pub fn add_menu_separator(&self, item_idx: u32) -> Result<(), SystrayError> {
         let mut item = get_menu_item_struct();
         item.fMask = MIIM_FTYPE;
         item.fType = MFT_SEPARATOR;
-        item.wID = idx;
+        item.wID = item_idx;
         unsafe {
             if user32::InsertMenuItemW(self.info.hmenu,
-                                       idx,
+                                       item_idx,
                                        1,
                                        &item as *const winapi::MENUITEMINFOW) == 0 {
                 return Err(get_win_os_error("Error inserting separator"));
             }
         }
-        Ok(idx)
-    }
-
-    pub fn add_menu_item<F>(&self, item_name: &String, f: F) -> Result<u32, SystrayError>
-        where F: std::ops::Fn(&Window) -> () + 'static {
-        let idx = match self.add_menu_entry(item_name) {
-            Ok(i) => i,
-            Err(e) => {
-                return Err(e);
-            }
-        };
-        let mut m = self.callback.borrow_mut();
-        m.insert(idx, make_callback(f));
-        Ok(idx)
+        Ok(())
     }
 
     fn set_icon(&self, icon: HICON) -> Result<(), SystrayError> {
@@ -374,27 +350,6 @@ impl Window {
             }
         }
         Ok(())
-    }
-
-    pub fn wait_for_message(&mut self) {
-        loop {
-            let msg;
-            match self.rx.recv() {
-                Ok(m) => msg = m,
-                Err(_) => {
-                    // If self.rx fails, we're in thread shutdown. Join here.
-                    if let Some(t) = self.windows_loop.take() {
-                        t.join().ok();
-                    }
-                    break;
-                }
-            }
-            if (*self.callback.borrow()).contains_key(&msg.menu_index) {
-                let f = (*self.callback.borrow_mut()).remove(&msg.menu_index).unwrap();
-                f(&self);
-                (*self.callback.borrow_mut()).insert(msg.menu_index, f);
-            }
-        }
     }
 
     pub fn set_icon_from_resource(&self, resource_name: &String) -> Result<(), SystrayError> {
