@@ -11,15 +11,17 @@ keywords = ["gui"]
 
 [dependencies]
 log="0.3"
-gtk="0.1"
-glib="0.1"
-libappindicator="0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi="0.2"
 user32-sys="0.2"
 kernel32-sys="0.2"
 libc="0.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk="^0.1.2"
+glib="^0.1.2"
+libappindicator="0.2"
 
 # [target.'cfg(target_os = "macos")'.dependencies]
 # objc="*"
