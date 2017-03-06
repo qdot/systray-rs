@@ -5,7 +5,7 @@ use std;
 use cocoa::appkit::{NSApp, NSApplication, NSButton, NSImage, NSStatusBar, NSStatusItem,
                     NSSquareStatusItemLength};
 use cocoa::base::{id, nil};
-use cocoa::foundation::{NSData, NSSize};
+use cocoa::foundation::{NSData, NSSize, NSAutoreleasePool};
 use libc::c_void;
 
 use SystrayError;
@@ -14,6 +14,8 @@ use SystrayError;
 pub struct Window {
     /// A mutable reference to the `NSApplication` instance of the currently running application.
     application: id,
+    /// It seems that we have to use `NSAutoreleasePool` to prevent memory leaks.
+    autorelease_pool: id,
 }
 
 impl Window {
@@ -21,6 +23,7 @@ impl Window {
     pub fn new() -> Result<Window, SystrayError> {
         Ok(Window {
             application: unsafe { NSApp() },
+            autorelease_pool: unsafe { NSAutoreleasePool::new(nil) },
         })
     }
 
@@ -53,19 +56,20 @@ impl Window {
 
         let tray_entry = unsafe {
             NSStatusBar::systemStatusBar(nil).statusItemWithLength_(NSSquareStatusItemLength)
+                                             .autorelease()
         };
 
         let nsdata = unsafe {
             NSData::dataWithBytes_length_(nil,
                                           buffer.as_ptr() as *const c_void,
-                                          buffer.len() as u64)
+                                          buffer.len() as u64).autorelease()
         };
         if nsdata == nil {
             return Err(SystrayError::OsError("Could not create `NSData` out of the passed buffer"
                                              .to_owned()));
         }
 
-        let nsimage = unsafe { NSImage::initWithData_(NSImage::alloc(nil), nsdata) };
+        let nsimage = unsafe { NSImage::initWithData_(NSImage::alloc(nil), nsdata).autorelease() };
         if nsimage == nil {
             return Err(SystrayError::OsError("Could not create `NSImage` out of the created \
                                              `NSData` buffer".to_owned()));
