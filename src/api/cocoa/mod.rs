@@ -6,7 +6,6 @@ use cocoa::appkit::{NSApp, NSApplication, NSButton, NSImage, NSStatusBar, NSStat
                     NSSquareStatusItemLength};
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSData, NSSize, NSAutoreleasePool};
-use libc::c_void;
 
 use SystrayError;
 
@@ -61,7 +60,7 @@ impl Window {
 
         let nsdata = unsafe {
             NSData::dataWithBytes_length_(nil,
-                                          buffer.as_ptr() as *const c_void,
+                                          buffer.as_ptr() as *const std::os::raw::c_void,
                                           buffer.len() as u64).autorelease()
         };
         if nsdata == nil {
