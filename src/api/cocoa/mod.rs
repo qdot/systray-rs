@@ -10,10 +10,10 @@ impl Window {
     pub fn quit(&self) {
         unimplemented!()
     }
-    pub fn set_tooltip(&self, _: &String) -> Result<(), SystrayError> {
+    pub fn set_tooltip(&self, _: &str) -> Result<(), SystrayError> {
         unimplemented!()
     }
-    pub fn add_menu_item<F>(&self, _: &String, _: F) -> Result<u32, SystrayError>
+    pub fn add_menu_item<F>(&self, _: &str, _: F) -> Result<u32, SystrayError>
     where
         F: std::ops::Fn(&Window) -> () + 'static,
     {

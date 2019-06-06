@@ -85,7 +85,7 @@ impl GtkSystrayApp {
         self.menu.show_all();
     }
 
-    pub fn add_menu_entry(&self, item_idx: u32, item_name: &String) {
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &str) {
         let mut menu_items = self.menu_items.borrow_mut();
         if menu_items.contains_key(&item_idx) {
             let m: &gtk::MenuItem = menu_items.get(&item_idx).unwrap();
@@ -104,7 +104,7 @@ impl GtkSystrayApp {
         self.menu.show_all();
     }
 
-    pub fn set_icon_from_file(&self, file: &String) {
+    pub fn set_icon_from_file(&self, file: &str) {
         let mut ai = self.ai.borrow_mut();
         ai.set_icon_full(file, "icon");
     }
@@ -138,7 +138,7 @@ impl Window {
         }
     }
 
-    pub fn add_menu_entry(&self, item_idx: u32, item_name: &String) -> Result<(), SystrayError> {
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &str) -> Result<(), SystrayError> {
         let n = item_name.clone();
         run_on_gtk_thread(move |stash: &GtkSystrayApp| {
             stash.add_menu_entry(item_idx, &n);
@@ -153,7 +153,7 @@ impl Window {
         Ok(())
     }
 
-    pub fn set_icon_from_file(&self, file: &String) -> Result<(), SystrayError> {
+    pub fn set_icon_from_file(&self, file: &str) -> Result<(), SystrayError> {
         let n: String = file.clone();
         run_on_gtk_thread(move |stash: &GtkSystrayApp| {
             stash.set_icon_from_file(&n);

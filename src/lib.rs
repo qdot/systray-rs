@@ -71,7 +71,7 @@ impl Application {
         }
     }
 
-    pub fn add_menu_item<F>(&mut self, item_name: &String, f: F) -> Result<u32, SystrayError>
+    pub fn add_menu_item<F>(&mut self, item_name: &str, f: F) -> Result<u32, SystrayError>
     where
         F: std::ops::Fn(&mut Application) -> () + 'static,
     {
@@ -93,11 +93,11 @@ impl Application {
         Ok(idx)
     }
 
-    pub fn set_icon_from_file(&self, file: &String) -> Result<(), SystrayError> {
+    pub fn set_icon_from_file(&self, file: &str) -> Result<(), SystrayError> {
         self.window.set_icon_from_file(file)
     }
 
-    pub fn set_icon_from_resource(&self, resource: &String) -> Result<(), SystrayError> {
+    pub fn set_icon_from_resource(&self, resource: &str) -> Result<(), SystrayError> {
         self.window.set_icon_from_resource(resource)
     }
 
@@ -105,7 +105,7 @@ impl Application {
         self.window.shutdown()
     }
 
-    pub fn set_tooltip(&self, tooltip: &String) -> Result<(), SystrayError> {
+    pub fn set_tooltip(&self, tooltip: &str) -> Result<(), SystrayError> {
         self.window.set_tooltip(tooltip)
     }
 

@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 extern crate systray;
 
 //#[cfg(target_os = "windows")]
@@ -9,15 +11,15 @@ fn main() {
     }
     // w.set_icon_from_file(&"C:\\Users\\qdot\\code\\git-projects\\systray-rs\\resources\\rust.ico".to_string());
     // w.set_tooltip(&"Whatever".to_string());
-    app.set_icon_from_file(&"/usr/share/gxkb/flags/ua.png".to_string())
+    app.set_icon_from_file("/usr/share/gxkb/flags/ua.png")
         .ok();
-    app.add_menu_item(&"Print a thing".to_string(), |_| {
+    app.add_menu_item("Print a thing", |_| {
         println!("Printing a thing!");
     })
     .ok();
-    app.add_menu_item(&"Add Menu Item".to_string(), |window| {
+    app.add_menu_item("Add Menu Item", |window| {
         window
-            .add_menu_item(&"Interior item".to_string(), |_| {
+            .add_menu_item("Interior item", |_| {
                 println!("what");
             })
             .ok();
@@ -25,7 +27,7 @@ fn main() {
     })
     .ok();
     app.add_menu_separator().ok();
-    app.add_menu_item(&"Quit".to_string(), |window| {
+    app.add_menu_item("Quit", |window| {
         window.quit();
     })
     .ok();

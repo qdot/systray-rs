@@ -296,7 +296,7 @@ impl Window {
         }
     }
 
-    pub fn set_tooltip(&self, tooltip: &String) -> Result<(), SystrayError> {
+    pub fn set_tooltip(&self, tooltip: &str) -> Result<(), SystrayError> {
         // Add Tooltip
         debug!("Setting tooltip to {}", tooltip);
         // Gross way to convert String to [i8; 128]
@@ -315,7 +315,7 @@ impl Window {
         Ok(())
     }
 
-    pub fn add_menu_entry(&self, item_idx: u32, item_name: &String) -> Result<(), SystrayError> {
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &str) -> Result<(), SystrayError> {
         let mut st = to_wstring(item_name);
         let mut item = get_menu_item_struct();
         item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE;
@@ -360,7 +360,7 @@ impl Window {
         Ok(())
     }
 
-    pub fn set_icon_from_resource(&self, resource_name: &String) -> Result<(), SystrayError> {
+    pub fn set_icon_from_resource(&self, resource_name: &str) -> Result<(), SystrayError> {
         let icon;
         unsafe {
             icon = winuser::LoadImageW(
@@ -378,7 +378,7 @@ impl Window {
         self.set_icon(icon)
     }
 
-    pub fn set_icon_from_file(&self, icon_file: &String) -> Result<(), SystrayError> {
+    pub fn set_icon_from_file(&self, icon_file: &str) -> Result<(), SystrayError> {
         let wstr_icon_file = to_wstring(&icon_file);
         let hicon;
         unsafe {
