@@ -28,6 +28,9 @@ pub struct SystrayEvent {
     menu_index: u32,
 }
 
+impl std::error::Error for SystrayError {
+}
+
 impl std::fmt::Display for SystrayError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match self {
