@@ -1,8 +1,7 @@
 use std;
-use {SystrayError};
+use SystrayError;
 
-pub struct Window {
-}
+pub struct Window {}
 
 impl Window {
     pub fn new() -> Result<Window, SystrayError> {
@@ -15,7 +14,8 @@ impl Window {
         unimplemented!()
     }
     pub fn add_menu_item<F>(&self, _: &String, _: F) -> Result<u32, SystrayError>
-        where F: std::ops::Fn(&Window) -> () + 'static
+    where
+        F: std::ops::Fn(&Window) -> () + 'static,
     {
         unimplemented!()
     }
