@@ -1,20 +1,16 @@
 // Systray Lib
 
 extern crate log;
-#[cfg(target_os = "windows")]
-extern crate winapi;
-#[cfg(target_os = "windows")]
-extern crate kernel32;
-#[cfg(target_os = "windows")]
-extern crate user32;
-#[cfg(target_os = "windows")]
-extern crate libc;
-#[cfg(target_os = "linux")]
-extern crate gtk;
 #[cfg(target_os = "linux")]
 extern crate glib;
 #[cfg(target_os = "linux")]
+extern crate gtk;
+#[cfg(target_os = "linux")]
 extern crate libappindicator;
+#[cfg(target_os = "windows")]
+extern crate libc;
+#[cfg(target_os = "windows")]
+extern crate winapi;
 
 pub mod api;
 
@@ -52,10 +48,12 @@ pub struct Application {
     rx: Receiver<SystrayEvent>,
 }
 
-type Callback = Box<(Fn(&mut Application) -> () + 'static)>;
+type Callback = Box<(dyn Fn(&mut Application) -> () + 'static)>;
 
 fn make_callback<F>(f: F) -> Callback
-    where F: std::ops::Fn(&mut Application) -> () + 'static {
+where
+    F: std::ops::Fn(&mut Application) -> () + 'static,
+{
     Box::new(f) as Callback
 }
 
@@ -67,14 +65,16 @@ impl Application {
                 window: w,
                 menu_idx: 0,
                 callback: HashMap::new(),
-                rx: event_rx
+                rx: event_rx,
             }),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
     pub fn add_menu_item<F>(&mut self, item_name: &String, f: F) -> Result<u32, SystrayError>
-        where F: std::ops::Fn(&mut Application) -> () + 'static {
+    where
+        F: std::ops::Fn(&mut Application) -> () + 'static,
+    {
         let idx = self.menu_idx;
         if let Err(e) = self.window.add_menu_entry(idx, item_name) {
             return Err(e);

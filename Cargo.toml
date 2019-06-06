@@ -13,9 +13,7 @@ keywords = ["gui"]
 log= "0.4.8"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winapi= "0.3.8"
-user32-sys= "0.2.0"
-kernel32-sys= "0.2.2"
+winapi= {version = "0.3.8", features = ["shellapi", "libloaderapi", "errhandlingapi", "impl-default"]}
 libc= "0.2.66"
 
 [target.'cfg(target_os = "linux")'.dependencies]
