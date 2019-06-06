@@ -1,3 +1,4 @@
+use crate::{Error, SystrayEvent};
 use std;
 use std::cell::RefCell;
 use std::ffi::OsStr;
@@ -26,7 +27,6 @@ use winapi::{
         },
     },
 };
-use {SystrayError, SystrayEvent};
 
 // Got this idea from glutin. Yay open source! Boo stupid winproc! Even more boo
 // doing SetLongPtr tho.
@@ -55,8 +55,8 @@ struct WindowsLoopData {
     pub tx: Sender<SystrayEvent>,
 }
 
-unsafe fn get_win_os_error(msg: &str) -> SystrayError {
-    SystrayError::OsError(format!("{}: {}", &msg, errhandlingapi::GetLastError()))
+unsafe fn get_win_os_error(msg: &str) -> Error {
+    Error::OsError(format!("{}: {}", &msg, errhandlingapi::GetLastError()))
 }
 
 unsafe extern "system" fn window_proc(
@@ -155,7 +155,7 @@ fn get_menu_item_struct() -> MENUITEMINFOW {
     }
 }
 
-unsafe fn init_window() -> Result<WindowInfo, SystrayError> {
+unsafe fn init_window() -> Result<WindowInfo, Error> {
     let class_name = to_wstring("my_window");
     let hinstance: HINSTANCE = libloaderapi::GetModuleHandleA(std::ptr::null_mut());
     let wnd = WNDCLASSW {
@@ -247,7 +247,7 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<Window, SystrayError> {
+    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<Window, Error> {
         let (tx, rx) = channel();
         let windows_loop = thread::spawn(move || {
             unsafe {
@@ -296,7 +296,7 @@ impl Window {
         }
     }
 
-    pub fn set_tooltip(&self, tooltip: &str) -> Result<(), SystrayError> {
+    pub fn set_tooltip(&self, tooltip: &str) -> Result<(), Error> {
         // Add Tooltip
         debug!("Setting tooltip to {}", tooltip);
         // Gross way to convert String to [i8; 128]
@@ -315,7 +315,7 @@ impl Window {
         Ok(())
     }
 
-    pub fn add_menu_entry(&self, item_idx: u32, item_name: &str) -> Result<(), SystrayError> {
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &str) -> Result<(), Error> {
         let mut st = to_wstring(item_name);
         let mut item = get_menu_item_struct();
         item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE;
@@ -333,7 +333,7 @@ impl Window {
         Ok(())
     }
 
-    pub fn add_menu_separator(&self, item_idx: u32) -> Result<(), SystrayError> {
+    pub fn add_menu_separator(&self, item_idx: u32) -> Result<(), Error> {
         let mut item = get_menu_item_struct();
         item.fMask = MIIM_FTYPE;
         item.fType = MFT_SEPARATOR;
@@ -348,7 +348,7 @@ impl Window {
         Ok(())
     }
 
-    fn set_icon(&self, icon: HICON) -> Result<(), SystrayError> {
+    fn set_icon(&self, icon: HICON) -> Result<(), Error> {
         unsafe {
             let mut nid = get_nid_struct(&self.info.hwnd);
             nid.uFlags = NIF_ICON;
@@ -360,7 +360,7 @@ impl Window {
         Ok(())
     }
 
-    pub fn set_icon_from_resource(&self, resource_name: &str) -> Result<(), SystrayError> {
+    pub fn set_icon_from_resource(&self, resource_name: &str) -> Result<(), Error> {
         let icon;
         unsafe {
             icon = winuser::LoadImageW(
@@ -378,7 +378,7 @@ impl Window {
         self.set_icon(icon)
     }
 
-    pub fn set_icon_from_file(&self, icon_file: &str) -> Result<(), SystrayError> {
+    pub fn set_icon_from_file(&self, icon_file: &str) -> Result<(), Error> {
         let wstr_icon_file = to_wstring(&icon_file);
         let hicon;
         unsafe {
@@ -402,7 +402,7 @@ impl Window {
         buffer: &[u8],
         width: u32,
         height: u32,
-    ) -> Result<(), SystrayError> {
+    ) -> Result<(), Error> {
         let offset = unsafe {
             winuser::LookupIconIdFromDirectoryEx(
                 buffer.as_ptr() as PBYTE,
@@ -437,7 +437,7 @@ impl Window {
         }
     }
 
-    pub fn shutdown(&self) -> Result<(), SystrayError> {
+    pub fn shutdown(&self) -> Result<(), Error> {
         unsafe {
             let mut nid = get_nid_struct(&self.info.hwnd);
             nid.uFlags = NIF_ICON;

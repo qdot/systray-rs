@@ -1,19 +1,19 @@
+use crate::Error;
 use std;
-use SystrayError;
 
 pub struct Window {}
 
 impl Window {
-    pub fn new() -> Result<Window, SystrayError> {
-        Err(SystrayError::NotImplementedError)
+    pub fn new() -> Result<Window, Error> {
+        Err(Error::NotImplementedError)
     }
     pub fn quit(&self) {
         unimplemented!()
     }
-    pub fn set_tooltip(&self, _: &str) -> Result<(), SystrayError> {
+    pub fn set_tooltip(&self, _: &str) -> Result<(), Error> {
         unimplemented!()
     }
-    pub fn add_menu_item<F>(&self, _: &str, _: F) -> Result<u32, SystrayError>
+    pub fn add_menu_item<F>(&self, _: &str, _: F) -> Result<u32, Error>
     where
         F: std::ops::Fn(&Window) -> () + 'static,
     {
@@ -22,7 +22,7 @@ impl Window {
     pub fn wait_for_message(&mut self) {
         unimplemented!()
     }
-    pub fn set_icon_from_buffer(&self, _: &[u8], _: u32, _: u32) -> Result<(), SystrayError> {
+    pub fn set_icon_from_buffer(&self, _: &[u8], _: u32, _: u32) -> Result<(), Error> {
         unimplemented!()
     }
 }

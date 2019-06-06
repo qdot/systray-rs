@@ -1,3 +1,4 @@
+use crate::{Error, SystrayEvent};
 use glib;
 use gtk::{
     self, MenuShellExt, GtkMenuItemExt, WidgetExt
@@ -10,7 +11,6 @@ use std::{
     sync::mpsc::{channel, Sender},
     thread,
 };
-use {SystrayError, SystrayEvent};
 
 // Gtk specific struct that will live only in the Gtk thread, since a lot of the
 // base types involved don't implement Send (for good reason).
@@ -53,9 +53,9 @@ where
 }
 
 impl GtkSystrayApp {
-    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<GtkSystrayApp, SystrayError> {
+    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<GtkSystrayApp, Error> {
         if let Err(e) = gtk::init() {
-            return Err(SystrayError::OsError(format!("{}", "Gtk init error!")));
+            return Err(Error::OsError(format!("{}", "Gtk init error!")));
         }
         let mut m = gtk::Menu::new();
         let mut ai = AppIndicator::new("", "");
@@ -115,7 +115,7 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<Window, SystrayError> {
+    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<Window, Error> {
         let (tx, rx) = channel();
         let gtk_loop = thread::spawn(move || {
             GTK_STASH.with(|stash| match GtkSystrayApp::new(event_tx) {
@@ -138,38 +138,38 @@ impl Window {
         }
     }
 
-    pub fn add_menu_entry(&self, item_idx: u32, item_name: &str) -> Result<(), SystrayError> {
-        let n = item_name.clone();
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &str) -> Result<(), Error> {
+        let n = item_name.to_owned().clone();
         run_on_gtk_thread(move |stash: &GtkSystrayApp| {
             stash.add_menu_entry(item_idx, &n);
         });
         Ok(())
     }
 
-    pub fn add_menu_separator(&self, item_idx: u32) -> Result<(), SystrayError> {
+    pub fn add_menu_separator(&self, item_idx: u32) -> Result<(), Error> {
         run_on_gtk_thread(move |stash: &GtkSystrayApp| {
             stash.add_menu_separator(item_idx);
         });
         Ok(())
     }
 
-    pub fn set_icon_from_file(&self, file: &str) -> Result<(), SystrayError> {
-        let n: String = file.clone();
+    pub fn set_icon_from_file(&self, file: &str) -> Result<(), Error> {
+        let n = file.to_owned().clone();
         run_on_gtk_thread(move |stash: &GtkSystrayApp| {
             stash.set_icon_from_file(&n);
         });
         Ok(())
     }
 
-    pub fn set_icon_from_resource(&self, resource: &str) -> Result<(), SystrayError> {
+    pub fn set_icon_from_resource(&self, resource: &str) -> Result<(), Error> {
         panic!("Not implemented on this platform!");
     }
 
-    pub fn shutdown(&self) -> Result<(), SystrayError> {
+    pub fn shutdown(&self) -> Result<(), Error> {
         Ok(())
     }
 
-    pub fn set_tooltip(&self, tooltip: &str) -> Result<(), SystrayError> {
+    pub fn set_tooltip(&self, tooltip: &str) -> Result<(), Error> {
         panic!("Not implemented on this platform!");
     }
 
