@@ -220,7 +220,7 @@ unsafe fn init_window() -> Result<WindowInfo, Error> {
 }
 
 unsafe fn run_loop() {
-    debug!("Running windows loop");
+    log::debug!("Running windows loop");
     // Run message loop
     let mut msg = winuser::MSG {
         hwnd: 0 as HWND,
@@ -238,7 +238,7 @@ unsafe fn run_loop() {
         winuser::TranslateMessage(&mut msg);
         winuser::DispatchMessageW(&mut msg);
     }
-    debug!("Leaving windows run loop");
+    log::debug!("Leaving windows run loop");
 }
 
 pub struct Window {
@@ -298,7 +298,7 @@ impl Window {
 
     pub fn set_tooltip(&self, tooltip: &str) -> Result<(), Error> {
         // Add Tooltip
-        debug!("Setting tooltip to {}", tooltip);
+        log::debug!("Setting tooltip to {}", tooltip);
         // Gross way to convert String to [i8; 128]
         // TODO: Clean up conversion, test for length so we don't panic at runtime
         let tt = tooltip.as_bytes().clone();

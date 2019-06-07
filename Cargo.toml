@@ -8,6 +8,7 @@ homepage = "http://github.com/qdot/systray-rs"
 repository = "https://github.com/qdot/systray-rs.git"
 readme = "README.md"
 keywords = ["gui"]
+edition = "2018"
 
 [dependencies]
 log= "0.4.8"

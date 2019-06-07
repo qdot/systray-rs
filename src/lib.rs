@@ -1,17 +1,4 @@
 // Systray Lib
-
-extern crate log;
-#[cfg(target_os = "linux")]
-extern crate glib;
-#[cfg(target_os = "linux")]
-extern crate gtk;
-#[cfg(target_os = "linux")]
-extern crate libappindicator;
-#[cfg(target_os = "windows")]
-extern crate libc;
-#[cfg(target_os = "windows")]
-extern crate winapi;
-
 pub mod api;
 
 use std::{
