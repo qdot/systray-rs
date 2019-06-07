@@ -69,8 +69,8 @@ type Callback = Box<(dyn Fn(&mut Application) -> Result<(), BoxedError> + Send +
 
 fn make_callback<F, E>(f: F) -> Callback
 where
-    F: Fn(&mut Application) -> Result<(), E> +  Send + Sync + 'static,
-    E:error::Error +  Send + Sync + 'static,
+    F: Fn(&mut Application) -> Result<(), E> + Send + Sync + 'static,
+    E: error::Error + Send + Sync + 'static,
 {
     Box::new(move |a: &mut Application| match f(a) {
         Ok(()) => Ok(()),
@@ -94,7 +94,7 @@ impl Application {
 
     pub fn add_menu_item<F, E>(&mut self, item_name: &str, f: F) -> Result<u32, Error>
     where
-        F: Fn(&mut Application) -> Result<(), E> +  Send + Sync + 'static,
+        F: Fn(&mut Application) -> Result<(), E> + Send + Sync + 'static,
         E: error::Error + Send + Sync + 'static,
     {
         let idx = self.menu_idx;
@@ -121,6 +121,16 @@ impl Application {
 
     pub fn set_icon_from_resource(&self, resource: &str) -> Result<(), Error> {
         self.window.set_icon_from_resource(resource)
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn set_icon_from_buffer(
+        &self,
+        buffer: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<(), Error> {
+        self.window.set_icon_from_buffer(buffer, width, height)
     }
 
     pub fn shutdown(&self) -> Result<(), Error> {
