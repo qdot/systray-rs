@@ -65,11 +65,12 @@ pub struct Application {
     rx: Receiver<SystrayEvent>,
 }
 
-type Callback = Box<(dyn Fn(&mut Application) -> Result<(), BoxedError> + Send + Sync + 'static)>;
+type Callback =
+    Box<(dyn FnMut(&mut Application) -> Result<(), BoxedError> + Send + Sync + 'static)>;
 
-fn make_callback<F, E>(f: F) -> Callback
+fn make_callback<F, E>(mut f: F) -> Callback
 where
-    F: Fn(&mut Application) -> Result<(), E> + Send + Sync + 'static,
+    F: FnMut(&mut Application) -> Result<(), E> + Send + Sync + 'static,
     E: error::Error + Send + Sync + 'static,
 {
     Box::new(move |a: &mut Application| match f(a) {
@@ -94,7 +95,7 @@ impl Application {
 
     pub fn add_menu_item<F, E>(&mut self, item_name: &str, f: F) -> Result<u32, Error>
     where
-        F: Fn(&mut Application) -> Result<(), E> + Send + Sync + 'static,
+        F: FnMut(&mut Application) -> Result<(), E> + Send + Sync + 'static,
         E: error::Error + Send + Sync + 'static,
     {
         let idx = self.menu_idx;
@@ -156,7 +157,7 @@ impl Application {
                 }
             }
             if self.callback.contains_key(&msg.menu_index) {
-                if let Some(f) = self.callback.remove(&msg.menu_index) {
+                if let Some(mut f) = self.callback.remove(&msg.menu_index) {
                     f(self)?;
                     self.callback.insert(msg.menu_index, f);
                 }
