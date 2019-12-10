@@ -28,7 +28,7 @@ impl Window {
 
     /// Closes the current application.
     pub fn quit(&self) {
-        unsafe { msg_send![self.application, terminate] };
+        let _: () = unsafe { msg_send![self.application, terminate] };
     }
 
     /// Sets the tooltip (not available for this platfor).
@@ -76,7 +76,7 @@ impl Window {
 
         unsafe {
             let new_size = NSSize::new(ICON_WIDTH, ICON_HEIGHT);
-            msg_send![nsimage, setSize:new_size];
+            let _: () = msg_send![nsimage, setSize:new_size];
             tray_entry.button().setImage_(nsimage);
         }
 
