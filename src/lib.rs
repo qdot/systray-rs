@@ -1,6 +1,5 @@
 // Systray Lib
 
-#[macro_use]
 extern crate log;
 #[cfg(target_os = "windows")]
 extern crate winapi;
