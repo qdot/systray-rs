@@ -1,6 +1,5 @@
 use gtk::{ self, WidgetExt, MenuShellExt, GtkMenuItemExt };
-use libappindicator::{AppIndicator,
-                      AppIndicatorStatus_APP_INDICATOR_STATUS_ACTIVE};
+use libappindicator::{AppIndicator, AppIndicatorStatus};
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use {SystrayEvent, SystrayError};
@@ -54,7 +53,7 @@ impl GtkSystrayApp {
         }
         let mut m = gtk::Menu::new();
         let mut ai = AppIndicator::new("", "");
-        ai.set_status(AppIndicatorStatus_APP_INDICATOR_STATUS_ACTIVE);
+        ai.set_status(AppIndicatorStatus::Active);
         ai.set_menu(&mut m);
         Ok(GtkSystrayApp {
             menu: m,
