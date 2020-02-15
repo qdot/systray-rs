@@ -1,5 +1,7 @@
 # systray-rs
 
+[![Crates.io](https://img.shields.io/crates/v/systray)](https://crates.io/crates/systray) [![Crates.io](https://img.shields.io/crates/d/systray)](https://crates.io/crates/systray)
+
 [![Build Status](https://travis-ci.org/qdot/systray-rs.svg?branch=master)](https://travis-ci.org/qdot/systray-rs) [![Build status](https://ci.appveyor.com/api/projects/status/lhqm3lucb5w5559b?svg=true)](https://ci.appveyor.com/project/qdot/systray-rs)
 
 systray-rs is a Rust library that makes it easy for applications to
@@ -10,6 +12,13 @@ add menu entries.
 systray-rs is heavily influenced by
 [the systray library for the Go Language](https://github.com/getlantern/systray).
 
+systray-rs currently supports:
+
+- Linux GTK
+- Win32
+
+Cocoa core still needed!
+
 # License
 
 systray-rs includes some code
@@ -19,7 +28,7 @@ once winapi-rs has a 0.3 crate available.
 
 systray-rs is BSD licensed.
 
-    Copyright (c) 2016, Kyle Machulis
+    Copyright (c) 2016-2020, Nonpolynomial Labs, LLC
     All rights reserved.
     
     Redistribution and use in source and binary forms, with or without
