@@ -1,13 +1,16 @@
 //! Contains the implementation of the Mac OS X tray icon in the top bar.
 
-use std;
-
-use cocoa::appkit::{NSApp, NSApplication, NSButton, NSImage, NSStatusBar, NSStatusItem,
-                    NSSquareStatusItemLength};
-use cocoa::base::{id, nil};
-use cocoa::foundation::{NSData, NSSize, NSAutoreleasePool};
-
-use SystrayError;
+use std::{
+    self,
+    sync::mpsc::Sender
+};
+use cocoa::{
+    appkit::{NSApp, NSApplication, NSButton, NSImage, NSStatusBar, NSStatusItem,
+             NSSquareStatusItemLength},
+    base::{id, nil},
+    foundation::{NSData, NSSize, NSAutoreleasePool}
+};
+use crate::{Error, SystrayEvent};
 
 /// The generation representation of the Mac OS X application.
 pub struct Window {
@@ -19,7 +22,7 @@ pub struct Window {
 
 impl Window {
     /// Creates a new instance of the `Window`.
-    pub fn new() -> Result<Window, SystrayError> {
+    pub fn new(event_tx: Sender<SystrayEvent>) -> Result<Window, Error> {
         Ok(Window {
             application: unsafe { NSApp() },
             autorelease_pool: unsafe { NSAutoreleasePool::new(nil) },
@@ -32,13 +35,13 @@ impl Window {
     }
 
     /// Sets the tooltip (not available for this platfor).
-    pub fn set_tooltip(&self, _: &String) -> Result<(), SystrayError> {
-        Err(SystrayError::OsError("This operating system does not support tooltips for the tray \
+    pub fn set_tooltip(&self, _: &str) -> Result<(), Error> {
+        Err(Error::OsError("This operating system does not support tooltips for the tray \
                                    items".to_owned()))
     }
 
     /// Adds an additional item to the tray icon menu.
-    pub fn add_menu_item<F>(&self, _: &String, _: F) -> Result<u32, SystrayError>
+    pub fn add_menu_item<F>(&self, _: &String, _: F) -> Result<u32, Error>
         where F: std::ops::Fn(&Window) -> () + 'static
     {
         unimplemented!()
@@ -48,7 +51,7 @@ impl Window {
     /// image, you can pass even encoded PNG images here. Supports the same list of formats as
     /// `NSImage`.
     pub fn set_icon_from_buffer(&mut self, buffer: &'static [u8], _: u32, _: u32)
-        -> Result<(), SystrayError>
+        -> Result<(), Error>
     {
         const ICON_WIDTH: f64 = 18.0;
         const ICON_HEIGHT: f64 = 18.0;
@@ -64,13 +67,13 @@ impl Window {
                                           buffer.len() as u64).autorelease()
         };
         if nsdata == nil {
-            return Err(SystrayError::OsError("Could not create `NSData` out of the passed buffer"
+            return Err(Error::OsError("Could not create `NSData` out of the passed buffer"
                                              .to_owned()));
         }
 
         let nsimage = unsafe { NSImage::initWithData_(NSImage::alloc(nil), nsdata).autorelease() };
         if nsimage == nil {
-            return Err(SystrayError::OsError("Could not create `NSImage` out of the created \
+            return Err(Error::OsError("Could not create `NSImage` out of the created \
                                              `NSData` buffer".to_owned()));
         }
 
@@ -86,5 +89,25 @@ impl Window {
     /// Starts the application event loop. Calling this function will block the current thread.
     pub fn wait_for_message(&mut self) {
         unsafe { self.application.run() };
+    }
+
+    pub fn set_icon_from_resource(&self, resource_name: &str) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    pub fn set_icon_from_file(&self, icon_file: &str) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    pub fn add_menu_separator(&self, item_idx: u32) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    pub fn add_menu_entry(&self, item_idx: u32, item_name: &str) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    pub fn shutdown(&self) -> Result<(), Error> {
+        Ok(())
     }
 }

@@ -1,3 +1,8 @@
+// Needed for msg_send! macro
+#[cfg(any(target_os = "macos"))]
+#[macro_use]
+extern crate objc;
+
 // Systray Lib
 pub mod api;
 
@@ -111,10 +116,10 @@ impl Application {
         self.window.set_icon_from_resource(resource)
     }
 
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     pub fn set_icon_from_buffer(
-        &self,
-        buffer: &[u8],
+        &mut self,
+        buffer: &'static [u8],
         width: u32,
         height: u32,
     ) -> Result<(), Error> {

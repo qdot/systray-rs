@@ -46,7 +46,6 @@ fn main() {
     }
 
     const ICON_BUFFER: &'static [u8] = include_bytes!("rust-logo.png");
-    let mut w = &mut app.window;
-    w.set_icon_from_buffer(ICON_BUFFER, 256, 256).unwrap();
-    w.wait_for_message();
+    app.set_icon_from_buffer(ICON_BUFFER, 256, 256).unwrap();
+    app.wait_for_message();
 }
