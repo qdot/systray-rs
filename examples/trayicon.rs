@@ -38,14 +38,23 @@ fn main() -> Result<(), systray::Error> {
 }
 
 #[cfg(target_os = "macos")]
-fn main() {
+fn main() -> Result<(), systray::Error> {
     let mut app;
     match systray::Application::new() {
         Ok(w) => app = w,
-        Err(e) => panic!("Can't create tray icon app!")
+        Err(e) => panic!("Can't create tray icon app!"),
     }
 
     const ICON_BUFFER: &'static [u8] = include_bytes!("rust-logo.png");
     app.set_icon_from_buffer(ICON_BUFFER, 256, 256).unwrap();
-    app.wait_for_message();
+    app.add_menu_item("Print a thing", |_| {
+        println!("Printing a thing!");
+        Ok::<_, systray::Error>(())
+    })?;
+    app.add_menu_item("Exit", |_| {
+        Ok::<_, systray::Error>(())
+    });
+    app.wait_for_message()?;
+
+    Ok(())
 }
