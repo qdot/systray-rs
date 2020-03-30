@@ -3,21 +3,15 @@
 #[macro_use]
 extern crate objc;
 
-#[cfg(any(target_os = "macos"))]
-extern crate crossbeam;
-
 // Systray Lib
 pub mod api;
 
 use std::{
+    cell::RefCell,
     collections::HashMap,
-    error, fmt, thread,
-    sync::{
-        Arc,
-        Mutex,
-        MutexGuard,
-        mpsc::{channel, Receiver},
-    }
+    error, fmt,
+    rc::Rc,
+    sync::mpsc::{channel, Receiver},
 };
 
 type BoxedError = Box<dyn error::Error + Send + Sync + 'static>;
@@ -56,10 +50,12 @@ impl fmt::Display for Error {
 }
 
 pub struct Application {
-    window: Arc<Mutex<api::api::Window>>,
+    window: Rc<RefCell<Box<api::api::Window>>>,
+    #[cfg(target_os = "macos")]
+    window_raw_ptr: *mut api::api::Window,
     menu_idx: u32,
     callback: HashMap<u32, Callback>,
-    // Each platform-specific window module will set up its own thread for
+    // Each non-macOS platform-specific window module will set up its own thread for
     // dealing with the OS main loop. Use this channel for receiving events from
     // that thread.
     rx: Receiver<SystrayEvent>,
@@ -81,48 +77,54 @@ where
 
 impl Application {
     #[cfg(not(target_os = "macos"))]
-    pub fn new() -> Result<Application, Error> {
+    pub fn new() -> Result<Box<Application>, Error> {
         let (event_tx, event_rx) = channel();
         match api::api::Window::new(event_tx) {
-            Ok(w) => Ok(Application {
-                window: Arc::from(Mutex::from(w)),
+            Ok(w) => Ok(Box::from(Application {
+                window: w,
                 menu_idx: 0,
                 callback: HashMap::new(),
                 rx: event_rx,
-            }),
+            })),
             Err(e) => Err(e),
         }
     }
 
     #[cfg(target_os = "macos")]
-    pub fn new() -> Result<Application, Error> {
+    pub fn new() -> Result<Box<Application>, Error> {
         let (event_tx, event_rx) = channel();
-        match api::api::Window::new(Mutex::from(event_tx)) {
-            Ok(w) => Ok(Application {
-                window: Arc::from(Mutex::from(w)),
-                menu_idx: 0,
-                callback: HashMap::new(),
-                rx: event_rx,
-            }),
+        
+        match api::api::Window::new() {
+            Ok(w) => {
+                let window_raw_ptr = Box::into_raw(Box::from(w));
+                let window = unsafe { Box::from_raw(window_raw_ptr) };
+                let window_rc = Rc::from(RefCell::from(window));
+                let application_raw_ptr = Box::into_raw(Box::from(Application {
+                    window: window_rc.clone(),
+                    window_raw_ptr,
+                    menu_idx: 0,
+                    callback: HashMap::new(),
+                    rx: event_rx,
+                }));
+
+                let mut application_window = window_rc.borrow_mut();
+                application_window.set_systray_application(application_raw_ptr);
+
+                let application = unsafe { Box::from_raw(application_raw_ptr) };
+                Ok(application)
+            },
             Err(e) => Err(e),
         }
     }
 
-    pub fn get_window<'a>(&'a mut self) -> Result<MutexGuard<'a, api::api::Window>, Error> {
-        let arc = Box::leak(Box::from(self.window.clone()));
-        match arc.lock() {
-            Ok(w) => Ok(w),
-            Err(_) => Err(Error::OsError("Error acquiring lock for window".to_owned()))
-        }
-    }
-
+    #[cfg(not(target_os = "macos"))]
     pub fn add_menu_item<F, E>(&mut self, item_name: &str, f: F) -> Result<u32, Error>
     where
         F: FnMut(&mut Application) -> Result<(), E> + Send + Sync + 'static,
         E: error::Error + Send + Sync + 'static,
     {
         let idx = self.menu_idx;
-        if let Err(e) = self.get_window()?.add_menu_entry(idx, item_name) {
+        if let Err(e) = self.window.try_borrow_mut()?.add_menu_entry(idx, item_name) {
             return Err(e);
         }
         self.callback.insert(idx, make_callback(f));
@@ -130,9 +132,23 @@ impl Application {
         Ok(idx)
     }
 
+    #[cfg(target_os = "macos")]
+    pub fn add_menu_item<F, E>(&mut self, item_name: &str, f: F) -> Result<u32, Error>
+    where
+        F: FnMut(&mut Application) -> Result<(), E> + Send + Sync + 'static,
+        E: error::Error + Send + Sync + 'static,
+    {
+        let idx = self.menu_idx;
+        if let Err(e) = self.window.try_borrow_mut()?.add_menu_entry(idx, item_name, make_callback(f)) {
+            return Err(e);
+        }
+        self.menu_idx += 1;
+        Ok(idx)
+    }
+
     pub fn add_menu_separator(&mut self) -> Result<u32, Error> {
         let idx = self.menu_idx;
-        if let Err(e) = self.get_window()?.add_menu_separator(idx) {
+        if let Err(e) = self.window.try_borrow_mut()?.add_menu_separator(idx) {
             return Err(e);
         }
         self.menu_idx += 1;
@@ -140,11 +156,11 @@ impl Application {
     }
 
     pub fn set_icon_from_file(&mut self, file: &str) -> Result<(), Error> {
-        self.get_window()?.set_icon_from_file(file)
+        self.window.try_borrow_mut()?.set_icon_from_file(file)
     }
 
     pub fn set_icon_from_resource(&mut self, resource: &str) -> Result<(), Error> {
-        self.get_window()?.set_icon_from_resource(resource)
+        self.window.try_borrow_mut()?.set_icon_from_resource(resource)
     }
 
     #[cfg(any(target_os = "windows", target_os = "macos"))]
@@ -154,23 +170,24 @@ impl Application {
         width: u32,
         height: u32,
     ) -> Result<(), Error> {
-        self.get_window()?.set_icon_from_buffer(buffer, width, height)
+        self.window.try_borrow_mut()?.set_icon_from_buffer(buffer, width, height)
     }
 
     pub fn shutdown(&mut self) -> Result<(), Error> {
-        self.get_window()?.shutdown()
+        self.window.try_borrow_mut()?.shutdown()
     }
 
     pub fn set_tooltip(&mut self, tooltip: &str) -> Result<(), Error> {
-        self.get_window()?.set_tooltip(tooltip)
+        self.window.try_borrow_mut()?.set_tooltip(tooltip)
     }
 
     pub fn quit(&mut self) -> Result<(), Error> {
-        self.get_window()?.quit();
+        self.window.try_borrow_mut()?.quit();
         Ok(())
     }
 
-    fn run_event_loop(&mut self) -> Result<(), Error> {
+    #[cfg(not(target_os = "macos"))]
+    fn wait_for_message(&mut self) -> Result<(), Error> {
         loop {
             let msg;
             match self.rx.recv() {
@@ -191,22 +208,11 @@ impl Application {
         Ok(())
     }
     
-    #[cfg(not(target_os = "macos"))]
-    pub fn wait_for_message(&mut self) -> Result<(), Error> {
-        self.run_event_loop()
-    }
-
     #[cfg(target_os = "macos")]
     pub fn wait_for_message<'a>(&'a mut self) -> Result<(), Error> {
-        crossbeam::scope(|scope| {
-            let thread_window_mutex = self.window.clone();
-            let evloop_thread = scope.spawn(move || {
-                self.run_event_loop();
-            });
-            let mut thread_window = thread_window_mutex.lock().unwrap();
-            thread_window.wait_for_message();
-            evloop_thread.join();
-        });
+        let mut window = unsafe { Box::from_raw(self.window_raw_ptr) };
+        window.wait_for_message();
+        
         Ok(())
     }
 
@@ -215,5 +221,11 @@ impl Application {
 impl Drop for Application {
     fn drop(&mut self) {
         self.shutdown().ok();
+    }
+}
+
+impl std::convert::From<std::cell::BorrowMutError> for Error {
+    fn from(err: std::cell::BorrowMutError) -> Self {
+        Error::OsError(format!("{}", err))
     }
 }

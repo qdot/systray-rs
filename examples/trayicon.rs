@@ -51,7 +51,9 @@ fn main() -> Result<(), systray::Error> {
         println!("Printing a thing!");
         Ok::<_, systray::Error>(())
     })?;
-    app.add_menu_item("Exit", |_| {
+    app.add_menu_separator()?;
+    app.add_menu_item("Exit", |window| {
+        window.quit().unwrap();
         Ok::<_, systray::Error>(())
     });
     app.wait_for_message()?;
