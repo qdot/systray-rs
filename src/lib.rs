@@ -81,7 +81,7 @@ impl Application {
         let (event_tx, event_rx) = channel();
         match api::api::Window::new(event_tx) {
             Ok(w) => Ok(Box::from(Application {
-                window: w,
+                window: Rc::from(RefCell::from(Box::from(w))),
                 menu_idx: 0,
                 callback: HashMap::new(),
                 rx: event_rx,
