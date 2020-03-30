@@ -26,6 +26,10 @@ from [winapi-rs, by retep998](https://github.com/retep998/winapi-rs).
 This code is covered under the MIT license. This code will be removed
 once winapi-rs has a 0.3 crate available.
 
+systray-rs includes some code
+from [rust-sysbar, by rust-sysbar](https://github.com/rust-sysbar/rust-sysbar).
+This code is covered under the MIT license.
+
 systray-rs is BSD licensed.
 
     Copyright (c) 2016-2020, Nonpolynomial Labs, LLC
