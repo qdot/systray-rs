@@ -23,8 +23,8 @@ glib= "0.9.3"
 libappindicator= "0.5.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc = "*"
-objc-foundation = "*"
-objc_id = "*"
-cocoa = "*"
-core-foundation = "*"
+objc = "0.2.7"
+objc-foundation = "0.1.1"
+objc_id = "0.1.1"
+cocoa = "0.20.0"
+core-foundation = "0.7.0"
