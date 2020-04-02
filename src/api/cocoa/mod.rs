@@ -29,7 +29,7 @@ use objc_foundation::{INSObject, NSObject};
 use objc_id::Id;
 use crate::{Application, BoxedError, Callback, Error};
 
-/// The generation representation of the Mac OS X application.
+/// The general representation of the Mac OS X application.
 pub struct Window {
     /// A reference to systray::Application for callbacks
     systray_application: Option<Rc<RefCell<Box<Application>>>>,
