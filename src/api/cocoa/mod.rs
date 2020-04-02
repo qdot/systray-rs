@@ -223,8 +223,6 @@ impl Window {
     }
 }
 
-unsafe impl Send for Window {}
-
 // Devired from https://github.com/rust-sysbar/rust-sysbar/blob/master/src/mac_os/mod.rs
 // Copyright (c) 2017 The rs-barfly Developers
 // Copyright (c) 2017 The rust-sysbar Developers
